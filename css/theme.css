@@ -1,0 +1,36 @@
+.main-bg{
+  background-color:#8bb8df;
+}
+
+.login{
+  width:50%;
+  margin-top: 5%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.main-logo{
+  width: 30%;
+  border-radius: 50%;
+  margin: 5% 35% 5% 35%;
+  transition-property: transform;
+  transition-duration: 5s;
+}
+
+.main-logo:hover{
+opacity: 1;
+-moz-transform: rotate(360deg);
+-webkit-transform: rotate(360deg);
+-o-transform: rotate(360deg) ;
+transform:rotate(360deg);
+transition-property: transform;
+transition-duration: 5s;
+z-index: 1000;
+
+}
+.center{
+  margin-left: 40%;
+  margin-right: 40%;
+  width: 20%;
+  text-align: center;
+}
