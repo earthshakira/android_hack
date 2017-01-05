@@ -24,6 +24,9 @@
      <div class="jumbotron" style="margin-top:40px">
        <h1>Welcome <?php echo  $_SESSION["user_name"]; ?>!</h1>
        <p>You will see the actual page when it is developed</p>
+       <?php if($_SESSION["user_name"]=="super_admin"){
+          echo "<a class=\"btn btn-warning\" href=\"./register.php\" >Add New User</a>";
+       } ?>
        <button class="btn btn-success" onclick="logout()">Logout</button>
      </div>
    </div>
