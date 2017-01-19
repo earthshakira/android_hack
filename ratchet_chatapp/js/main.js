@@ -12,13 +12,15 @@
 		$("#messages").animate({ scrollTop: $('#messages')[0].scrollHeight}, 1000);
 	}
 
-	var conn = new WebSocket('ws://192.168.0.102:8080');
+	var conn = new WebSocket('ws://localhost:8080');
 	conn.onopen = function(e) {
 	    console.log("Connection established!");
+
 	};
 
 	conn.onmessage = function(e) {
 		var msg = JSON.parse(e.data);
+		console.log(msg);
 		updateMessages(msg);
 	};
 
@@ -36,7 +38,6 @@
 
 		updateMessages(msg);
 		conn.send(JSON.stringify(msg));
-
 		$('#user').val('');
 	});
 
@@ -56,14 +57,14 @@
 
 
 	$('#leave-room').click(function(){
-		
+
 		var msg = {
 			'user': user,
 			'text': user + ' has left the room',
 			'time': moment().format('hh:mm a')
 		};
 		updateMessages(msg);
-		conn.send(JSON.stringify(msg));
+
 
 		$('#messages').html('');
 		messages = [];
@@ -71,7 +72,7 @@
 		$('#main-container').addClass('hidden');
 		$('#user-container').removeClass('hidden');
 
-		
+
 	});
 
 })();
