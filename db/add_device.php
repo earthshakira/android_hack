@@ -30,7 +30,7 @@ function disconnect_device($dev,$socket){
     echo "device removed from active";
   }
   $time=time();
-  $query="update devices set last_seen='$time' WHERE device_id='".$dev."';";
+  $query="UPDATE devices SET last_seen='$time' WHERE device_id='".$dev."';";
   if(! $conn->query($query)){
     echo "sql error for removing device";
   }else{
@@ -38,6 +38,21 @@ function disconnect_device($dev,$socket){
   }
 }
 
+function get_socket($dev){
+  require("connect.php");
+  $sql="SELECT socket FROM active WHERE device_id='$dev'";
+  echo $sql;
+  $result=$conn->query($sql);
+  if ($result->num_rows > 0) {
+    // output data of each row
+    while($row = $result->fetch_assoc()) {
+      return $row["socket"];
+    }
+  }else{
+
+  }
+  return -1;
+}
 function truncate(){
   require("connect.php");
   $query="truncate active;";
