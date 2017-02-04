@@ -15,6 +15,7 @@
    <link rel="stylesheet" href="./bootstrap/css/bootstrap.css" >
    <link rel="stylesheet" type="text/css" href="./css/theme.css" >
    <script type="text/javascript" src="js/jquery.js"></script>
+   <script type="text/javascript" src="bootstrap/js/bootstrap.js"></script>
    <script type="text/javascript" src="js/websocket.js"></script>
    <script type="text/javascript" src="js/jquery.cookie.js"></script>
    <script type="text/javascript" src="js/main.js"></script>
@@ -32,6 +33,10 @@
        <br>
        <div id="device_table"></div>
        <div id="image_display"></div>
+       <div class="progress">
+          <div class="progress-bar" role="progressbar" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100" style="width:70%">
+          </div>
+      </div>
      </div>
    </div>
    <script>
@@ -44,8 +49,13 @@
     conn.onmessage = function(e) {
       console.log(e.data);
   		var msg = JSON.parse(e.data);
+      if(msg.type=="gallery_progress"){
 
-      if(msg.type=="screenshot"){
+        var perc=Math.ceil(100.*(msg.done)/msg.total);
+        console.log(perc);
+        $('.progress-bar').css('width', perc+'%');
+      }
+      else if(msg.type=="screenshot"){
         $("#image_display").html("<img src=\"data:image/png;base64,"+msg.image+"\">");
       }else if(msg.type=="contact"){
         alert("contacts are here");
@@ -62,14 +72,17 @@
         $("#image_display").html(htmlString);
       }else if(msg.type=="gallery"){
         var img = JSON.parse(msg.list);
-
-        $("#image_display").html("<img class=\"devimg\" src=\"data:image/png;base64,"+img.img1+"\"><br><hr><img class=\"devimg\" src=\"data:image/png;base64,"+img.img2+"\"><br><hr><img class=\"devimg\" src=\"data:image/png;base64,"+img.img3+"\">");
+          console.log(img);
+          var htmlString="";
+        for(var i = 0 ;i<img.length;i++){
+            htmlString+="<p>"+img[i].folder+"->" + img[i].path+" | "+img[i].page +"</p>";
+        }
+        $("#image_display").html("<pre>"+htmlString+"</pre>");
       }else if(msg.type=="calllog"){
         $("#image_display").html("<pre>"+msg.list+"</pre>");
       }
-  		console.log(msg);
   	};
-    
+
     //conn.send(JSON.stringify(msg));
     function screenshot(id){
       var msg={};

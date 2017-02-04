@@ -38,3 +38,7 @@ z-index: 1000;
 .devimg{
   width:100%;
 }
+
+.base-page{
+  display: none;
+}

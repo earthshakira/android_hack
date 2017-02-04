@@ -17,9 +17,11 @@
         $active=$active->num_rows;
         $time=time();
         $last=$row["last_seen"];
-        $diff=$time-$last;
+        $diff=(int)$time-(int)$last;
         if($diff>5000)$active=0;
-        $data=["id"=>$row["device_id"],"name"=>$row["device_name"],"account"=>$row["device_account"],'active'=>$active,'last_seen'=>$diff];
+        $data=$row;
+        $data["last_seen"]=$diff;
+        $data["active"]=$active;
         array_push($json,$data);
     }
   }

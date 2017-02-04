@@ -12,6 +12,11 @@
   * 2=error
   * 3=fatal error
   */
+  session_start();
+  if(!isset($_SESSION["user_name"]))
+    header("location: ../index.php");
+  if($_SESSION["user_name"]!=="super_admin")
+    header("location: ../index.php");
   header('Content-Type: application/json');
   require("connect.php");
   $data=["status"=>1,"message"=>"User Created Successfully"];

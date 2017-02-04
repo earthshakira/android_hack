@@ -2,7 +2,7 @@
   //script to redirect an already logged in user
   session_start();
   if(isset($_SESSION["user_name"])){
-    header("location: user.php");
+    header("location: ./production/");
     exit();
   }
  ?>
@@ -97,7 +97,7 @@
                             $.cookie("user",user, { expires: 24*3600*1000});
                             $.cookie("pass",pass, { expires: 24*3600*1000});
                           }
-                          window.location.href=getBaseUrl()+"user.php";
+                          window.location.href=getBaseUrl()+"production/";
                           break;
                           case 2://Error
                           $("#response").addClass("alert-warning");

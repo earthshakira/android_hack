@@ -23,7 +23,7 @@ class Chat implements MessageComponentInterface {
         $msg=json_decode($msg);
       if(isset($msg->type)){
         if($msg->type=="handshake"){
-          add_device($msg->user,$msg->id,$msg->devname,$msg->devuser,($from->resourceId));
+          add_device($msg,($from->resourceId));
           $this->clients[$from->resourceId]->details=$msg;
           $this->clients[$from->resourceId]->android=true;
           $this->android[$from->resourceId]=(object)['conn' => $from ,'time' => 0 ];
@@ -40,10 +40,20 @@ class Chat implements MessageComponentInterface {
           $this->clients[$msg->to]->conn->send(json_encode($data));
         }else if($msg->type=="gallery"){
           $data=["type"=>"gallery","list"=>$msg->response];
-          $this->clients[$msg->to]->conn->send(json_encode($data));
+          //$this->clients[$msg->to]->conn->send(json_encode($data));
+          $data=json_decode($msg->response);
+          $ack_msg=(object)["type"=>"gallery_progress","done"=>$msg->page,"total"=>$msg->total];
+          $this->clients[$msg->to]->conn->send(json_encode($ack_msg));
+          $i=1;
+          build_data($msg->response ,$msg->id);
+          $ack_msg->done=$i;
+          echo "page $msg->page";
+
         }else if($msg->type=="ping"){
           echo json_encode($msg);
           $this->android[$from->resourceId]->time = time();
+          echo time() ;
+          battery_report($msg->id,$msg->battery);
         }else{
           echo "unknown";
         }
