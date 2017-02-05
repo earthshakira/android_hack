@@ -10,7 +10,7 @@ if(!isset($_GET['device_id'])){
 }
 $dev=($_GET['device_id']);
 $did=get_did($dev);
-$sql="SELECT perc,time FROM battery_stats WHERE did=$did order by time DESC limit 100";
+$sql="SELECT distinct(perc),time FROM battery_stats WHERE did=$did order by time DESC limit 100 ";
 //echo $sql;
 $json=[];
 $result=$conn->query($sql);

@@ -63,5 +63,7 @@
     $data["message"]="SQL Error";
     die(json_encode($data));
   }
+  $home=md5($name);
+  mkdir("$home",700,true);
   echo json_encode($data);
 ?>

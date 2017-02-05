@@ -40,6 +40,7 @@
     <link href="../vendors/datatables.net-responsive-bs/css/responsive.bootstrap.min.css" rel="stylesheet">
     <link href="../vendors/datatables.net-scroller-bs/css/scroller.bootstrap.min.css" rel="stylesheet">
 
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <!-- Custom Theme Style -->
     <link href="../build/css/custom.min.css" rel="stylesheet">
   </head>
@@ -218,7 +219,7 @@
         <!-- /top navigation -->
 
         <!-- page content -->
-        <div class="right_col" role="main">
+        <div class="right_col" role="main" style="overflow:hidden">
           <div id="home" class="container" class="base-page" >
             <div class="row">
                 <h1 class="txt txt-default"><i class="fa fa-home"></i>&nbsp; Welcome to Home</h1>
@@ -418,7 +419,174 @@
               <div class="row">
                   <h1 class="txt txt-default"><i class="fa fa-microchip"></i>&nbsp; Advanced Menu</h1>
               </div>
-              <div id="advanced-menu-dynamic" style="display:none">
+              <div id="advanced-menu-dynamic" class="container" style="display:none">
+                <div class="row">
+                  <div class="col-md-8 col-sm-12 col-xs-12">
+                    <div class="dashboard_graph">
+                      <div class="row x_title">
+                        <div class="col-md-12 col-xs-12">
+                          <h3>Battery and Activity <small>upto last 100 logs</small></h3>
+                        </div>
+                      </div>
+                      <div class="col-md-12 col-sm-12 col-xs-12">
+                        <div id="battery_chart_plot" class="demo-placeholder" style="padding: 0px; position: relative;"><canvas class="flot-base" style="direction: ltr; position: absolute; left: 0px; top: 0px; width: 973px; height: 280px;" width="973" height="280"></canvas><div class="flot-text" style="position: absolute; top: 0px; left: 0px; bottom: 0px; right: 0px; font-size: smaller; color: rgb(84, 84, 84);"><div class="flot-x-axis flot-x1-axis xAxis x1Axis" style="position: absolute; top: 0px; left: 0px; bottom: 0px; right: 0px; display: block;"><div style="position: absolute; max-width: 121px; top: 264px; left: 38px; text-align: center;" class="flot-tick-label tickLabel">Jan 01</div><div style="position: absolute; max-width: 121px; top: 264px; left: 194px; text-align: center;" class="flot-tick-label tickLabel">Jan 02</div><div style="position: absolute; max-width: 121px; top: 264px; left: 350px; text-align: center;" class="flot-tick-label tickLabel">Jan 03</div><div style="position: absolute; max-width: 121px; top: 264px; left: 507px; text-align: center;" class="flot-tick-label tickLabel">Jan 04</div><div style="position: absolute; max-width: 121px; top: 264px; left: 663px; text-align: center;" class="flot-tick-label tickLabel">Jan 05</div><div style="position: absolute; max-width: 121px; top: 264px; left: 819px; text-align: center;" class="flot-tick-label tickLabel">Jan 06</div></div><div class="flot-y-axis flot-y1-axis yAxis y1Axis" style="position: absolute; top: 0px; left: 0px; bottom: 0px; right: 0px; display: block;"><div style="position: absolute; top: 241px; left: 7px; text-align: right;" class="flot-tick-label tickLabel">0</div><div style="position: absolute; top: 215px; left: 1px; text-align: right;" class="flot-tick-label tickLabel">10</div><div style="position: absolute; top: 188px; left: 1px; text-align: right;" class="flot-tick-label tickLabel">20</div><div style="position: absolute; top: 161px; left: 1px; text-align: right;" class="flot-tick-label tickLabel">30</div><div style="position: absolute; top: 134px; left: 1px; text-align: right;" class="flot-tick-label tickLabel">40</div><div style="position: absolute; top: 108px; left: 1px; text-align: right;" class="flot-tick-label tickLabel">50</div><div style="position: absolute; top: 81px; left: 1px; text-align: right;" class="flot-tick-label tickLabel">60</div><div style="position: absolute; top: 54px; left: 1px; text-align: right;" class="flot-tick-label tickLabel">70</div><div style="position: absolute; top: 27px; left: 1px; text-align: right;" class="flot-tick-label tickLabel">80</div><div style="position: absolute; top: 1px; left: 1px; text-align: right;" class="flot-tick-label tickLabel">90</div></div></div><canvas class="flot-overlay" style="direction: ltr; position: absolute; left: 0px; top: 0px; width: 973px; height: 280px;" width="973" height="280"></canvas></div>
+                      </div>
+                      <div class="clearfix"></div>
+                    </div>
+                  </div>
+                  <!-- start of Activity Chart -->
+                  <div class="col-md-4 col-sm-12 col-xs-12">
+                      <div class="x_panel">
+                        <div class="x_title">
+                          <h2>Device Info <small>descriptive</small></h2>
+                          <ul class="nav navbar-right panel_toolbox">
+                            <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                            </li>
+                            <li><a class="close-link"><i class="fa fa-close"></i></a>
+                            </li>
+                          </ul>
+                          <div class="clearfix"></div>
+                        </div>
+                        <div class="x_content">
+                          <div class="dashboard-widget-content">
+
+                            <ul class="list-unstyled timeline widget">
+                              <li>
+                                <div class="block">
+                                  <div class="block_content">
+                                    <h2 class="title" id='info_window_device_id'></h2>
+                                  </div>
+                                </div>
+                              </li>
+                              <li>
+                                <div class="block">
+                                  <div class="block_content">
+                                    <h2 class="title" id='info_window_devname'></h2>
+                                  </div>
+                                </div>
+                              </li>
+                              <li>
+                                <div class="block">
+                                  <div class="block_content">
+                                    <h2 class="title" id='info_window_devuser'></h2>
+                                  </div>
+                                </div>
+                              </li>
+                              <li>
+                                <div class="block">
+                                  <div class="block_content">
+                                    <h2 class="title" id='info_window_dev_api'></h2>
+                                  </div>
+                                </div>
+                              </li>
+                              <li>
+                                <div class="block">
+                                  <div class="block_content">
+                                    <h2 class="title" id='info_window_last_seen'></h2>
+                                  </div>
+                                </div>
+                              </li>
+                              <li>
+                                <div class="block">
+                                  <div class="block_content">
+                                    <h2 class="title" id='info_window_current_status'></h2>
+                                  </div>
+                                </div>
+                              </li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  <!--end of ativity -->
+                </div>
+                <div class="row">
+                  <br>
+                  <div class="col-md-7 col-sm-12 col-xs-12">
+                    <div class="x_panel">
+                      <div class="x_title">
+                        <h2>Call Logs  <small></small></h2>
+                        <ul class="nav navbar-right panel_toolbox">
+                          <li id="calllog_loader"></li>
+                          <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                          </li>
+                          <li><button type="button" onclick="callLog()" class="btn btn-warning btn-xs">Pull Callog</button>
+                          </li>
+                          <li><a class="close-link"><i class="fa fa-close"></i></a>
+                          </li>
+                        </ul>
+                        <div class="clearfix"></div>
+                      </div>
+                      <div class="x_content">
+                        <table id="calllog_fetch" class="table table-striped table-bordered bulk_action">
+
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-5 col-sm-12 col-xs-12">
+                    <div class="x_panel">
+                      <div class="x_title">
+                        <h2>Contacts List <small>contains emails too..</small></h2>
+                        <ul class="nav navbar-right panel_toolbox">
+                          <li id="contacts_loader"></li>
+                          <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                          </li>
+                          <li><button type="button" onclick="contacts()" class="btn btn-danger btn-xs">Pull Contacts</button>
+                          </li>
+                          <li><a class="close-link"><i class="fa fa-close"></i></a>
+                          </li>
+                        </ul>
+                        <div class="clearfix"></div>
+                      </div>
+                      <div class="x_content">
+                        <table id="contacts_fetch" class="table table-striped table-bordered bulk_action"></table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <br>
+                  <div class="col-md-7 col-sm-12 col-xs-12">
+                    <div class="x_panel">
+                      <div class="x_title">
+                        <h2>Gallery <small></small></h2>
+                        <ul class="nav navbar-right panel_toolbox">
+                          <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                          </li>
+                          <li><button type="button" onclick="gallery()" class="btn btn-warning btn-xs">Pull Gallery </button>
+                          </li>
+                          <li><a class="close-link"><i class="fa fa-close"></i></a>
+                          </li>
+                        </ul>
+                        <div class="clearfix"></div>
+                      </div>
+                      <div class="x_content">
+                        <table id="gallery_fetch" class="table table-striped table-bordered bulk_action"></table>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-5 col-sm-12 col-xs-12">
+                    <div class="x_panel">
+                      <div class="x_title">
+                        <h2>Preview Window <small></small></h2>
+                        <ul class="nav navbar-right panel_toolbox">
+                          <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                          </li>
+                          <li><button type="button" onclick="contacts()" class="btn btn-danger btn-xs">Pull Contacts</button>
+                          </li>
+                          <li><a class="close-link"><i class="fa fa-close"></i></a>
+                          </li>
+                        </ul>
+                        <div class="clearfix"></div>
+                      </div>
+                      <div class="x_content" id="preview_window">
+                        
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
               </div>
               <div class="row" id="no-dev-placeholder">
                   <div class="jumbotron">
@@ -504,5 +672,6 @@
     <script type="text/javascript" src="../js/main.js"></script>
     <script type="text/javascript" src="../js/md5.js"></script>
     <script type="text/javascript" src="./js/main.js"></script>
+    <script type="text/javascript" src="./js/webs.js"></script>
   </body>
 </html>
