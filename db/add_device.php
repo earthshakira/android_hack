@@ -7,7 +7,7 @@ if($conn->connect_error)
 function add_device($msg,$socket){
   require("connect.php");
 
-  $query="INSERT INTO devices(user_name,device_id,device_name,device_account,device_api,last_seen) values('$msg->user','$msg->id','$msg->devname','$msg->devuser','$msg->api','".time()."')";
+  $query="INSERT INTO devices(user_name,device_id,device_name,device_account,device_api,cameras,last_seen) values('$msg->user','$msg->id','$msg->devname','$msg->devuser','$msg->api',$msg->cameras,'".time()."')";
   if(! $conn->query($query)){
     echo "device error:".mysqli_error($conn);
   }else{
@@ -88,10 +88,10 @@ function build_data($data,$device_id){
   }
 }
 
-function battery_report($dev,$perc){
+function battery_report($dev,$perc,$proc){
   require("connect.php");
   $did =  get_did($dev);
-  $query="INSERT INTO battery_stats(did,perc,time) values ('$did','$perc','".time()."')";
+  $query="INSERT INTO battery_stats(did,perc,proc,time) values ('$did','$perc','$proc','".time()."')";
   if(!$conn->query($query)){
     echo "error";//.mysqli_error($conn);
   }else{

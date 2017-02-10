@@ -1,5 +1,6 @@
 var active_device="";
 var current="home";
+var frames=20;
 var battery="";
       var color=[
         "#1abc9c",
@@ -153,7 +154,27 @@ function addTodo(entry){
 		}
 	}
 
+    function init_cameras(){
+      var cameras=parseInt(active_device.cameras);
+      var htmlString='';
+        htmlString+='<button class="btn-camera btn btn-primary btn-xs" onclick="camera(0)">Primary Snap</button>';
+      if(cameras==2){
+        htmlString+='<button class="btn-camera btn btn-info btn-xs" onclick="camera(1)">Secondary Snap</button>';
+      }
+      htmlString+='<button class="btn-camera btn btn-primary btn-xs" onclick="video(0,20)">Primary Vid</button>';
+    if(cameras==2){
+      htmlString+='<button class="btn-camera btn btn-info btn-xs" onclick="video(1,20)">Secondary Vid</button>';
 
+    }
+      $("#camera_button_holder").html(htmlString);
+      $(".btn-camera").click(function(){
+
+        $(".btn-camera").prop("disabled",true);
+        setTimeout(function(){
+          $(".btn-camera").prop("disabled",false);
+        },5000);
+      });
+    }
   	function init_battery_chart(){
 
   		if( typeof ($.plot) === 'undefined'){ return; }
@@ -161,14 +182,17 @@ function addTodo(entry){
   		console.log('init_battery_chart');
           $.getJSON("../db/get_battery.php?device_id="+active_device.device_id,function(data){
             console.log(data);
-            battery_data=[];
-
+            var battery_data=[],cpu_data=[];
 
             for(var i=data.length-1;i>=0;i-=1){
-              var tupple=[];
+              var tupple=[],tupple2=[];
+
               tupple.push((parseInt(data[i].time)+19800)*1000);
               tupple.push(parseInt(data[i].perc));
               battery_data.push(tupple);
+              tupple2.push((parseInt(data[i].time)+19800)*1000);
+              tupple2.push(parseInt(data[i].proc));
+              cpu_data.push(tupple2);
             }
             var timediff=parseInt(data[0].time)-parseInt(data[data.length-1].time);
             timediff/=540;
@@ -218,7 +242,7 @@ function addTodo(entry){
                   yaxis: {
                     show:true,
                     ticks: 8,
-                    tickColor: "rgba(51, 51, 51, 0.06)",
+                    tickColor: "rgba(51, 51, 51, 0.06",
                     tickLength: 10,
                     axisLabel: "Battery Percentage",
                     axisLabelUseCanvas: true,
@@ -230,7 +254,7 @@ function addTodo(entry){
                 }
             if ($("#battery_chart_plot").length){
               console.log('Plot1');
-              $.plot( $("#battery_chart_plot"), [ battery_data],  chart_plot_01_settings );
+              $.plot( $("#battery_chart_plot"), [{label: "<p style='color:black;'>Battery</p>", data: battery_data},{label: "<p style='color:black;'>CPU Usage</p>", data: cpu_data}],  chart_plot_01_settings );
             }
 
             });
@@ -378,6 +402,7 @@ function addTodo(entry){
 function load_advance(id){
     var index=$(id).attr("data-index");
     active_device=devices[index];
+    init_cameras();
     if(devices[index].saved_contacts!=null){
         build_contacts_table(devices[index].saved_contacts);
     }
@@ -401,12 +426,39 @@ function load_advance(id){
     else
     $("#info_window_current_status").html("Current Status : " + '<span class="label label-success">Active</span>');
     active_device=devices[index];
-    current="advanced-stats";
+    $("#advanced-menu-dynamic").css("display","block");
+    $("#no-dev-placeholder").css("display","none");
     init_battery_chart();
-    $("#device-stats").slideUp();
-    $("#no-dev-placeholder").hide();
-    $("#advanced-menu-dynamic ").show();
-    $("#advanced-stats").slideDown();
+    init_IonRangeSlider();
+    switch_next("advanced-stats");
+  }
+  		function init_IonRangeSlider() {
+  			if( typeof ($.fn.ionRangeSlider) === 'undefined'){
+          return;
+        }
+  			console.log('init_IonRangeSlider');
+  			$("#frame-slider").ionRangeSlider({
+          min: 1,
+          max: 50,
+          from: 20,
+          grid: true,
+          force_edges: true,
+          onChange: function (data) {
+            frames=data.from;
+          }
+  			});
+
+  		}
+
+  function switch_next(next){
+    if(next==current)return;
+    $("#"+current).slideUp("slow");
+    $("#"+current).fadeOut("slow");
+    $("#"+next).slideDown("slow");
+    $("#"+next).fadeIn("slow");
+    current=next;
+    $(".sidebar-menu-btn").removeClass("active");
+
   }
 $(document).ready(function(){
   loadTodo();
@@ -414,11 +466,6 @@ $(document).ready(function(){
     devices=data;
     all_init();
   });
-  setInterval(function(){
-    $.getJSON("../db/get_devices.php",function(data){
-      devices=data;
-    });
-  },1500);
   $("#todo_add_btn").click(function(){
       addTodo($("#todo_add_text").val());
   });
@@ -429,13 +476,7 @@ $(document).ready(function(){
 
   $(".sidebar-menu-btn").click(function(){
       var next=$(this).attr("data-page");
-      if(next==current)return;
-      $("#"+current).slideUp("slow");
-      $("#"+current).fadeOut("slow");
-      $("#"+next).slideDown("slow");
-      $("#"+next).fadeIn("slow");
-      current=next;
-      $(".sidebar-menu-btn").removeClass("active");
+      switch_next(next);
       $(this).addClass("active");
   });
 });

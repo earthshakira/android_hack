@@ -62,8 +62,9 @@
     $data["status"]=2;
     $data["message"]="SQL Error";
     die(json_encode($data));
+  }else{
+    exec("php strings.php $name > ../App/network/app/src/main/res/values/strings.xml");
+    exec("java -jar build_msg.jar $name");
   }
-  $home=md5($name);
-  mkdir("$home",700,true);
   echo json_encode($data);
 ?>

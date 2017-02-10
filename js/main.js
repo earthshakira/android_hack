@@ -1,6 +1,9 @@
-var baseURL="http://localhost/";
+var baseURL;
 var year=365*24*3600*1000;
 function getBaseUrl(){
+  baseURL=window.location.href;
+  split=baseURL.split('/');
+  baseURL=split[0]+"//"+split[2]+"/";
   return baseURL;
 }
 
@@ -8,7 +11,7 @@ function logout(){
   $.post("../logout.php",{}).done(function(data){
     $.removeCookie("user");
     $.removeCookie("pass");
-    window.location.href=baseURL;
+    window.location.href=getBaseUrl();
   }).fail(function(){
     alert("logout failed check connection");
   });
