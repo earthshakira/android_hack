@@ -29,16 +29,22 @@ CREATE TABLE `active` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+DROP TABLE IF EXISTS `notification`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `notification` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_name` varchar(255) DEFAULT NULL,
+  `device_id` varchar(255) DEFAULT NULL,
+  `type` varchar(255) DEFAULT NULL,
+  `text` varchar(255) DEFAULT NULL,
+  `time` varchar(255) DEFAULT NULL,
+  `seen` int(11) DEFAULT 0,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 --
 -- Dumping data for table `active`
 --
-
-LOCK TABLES `active` WRITE;
-/*!40000 ALTER TABLE `active` DISABLE KEYS */;
-INSERT INTO `active` VALUES ('355004054484715','495','wifi');
-/*!40000 ALTER TABLE `active` ENABLE KEYS */;
-UNLOCK TABLES;
-
 --
 -- Table structure for table `admin_key`
 --
@@ -110,6 +116,7 @@ CREATE TABLE `devices` (
   `saved_calllog` varchar(255) DEFAULT NULL,
   `saved_whatsapp` varchar(255) DEFAULT NULL,
   `saved_gallery` varchar(255) DEFAULT NULL,
+  `saved_history` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`user_name`,`device_id`),
   KEY `did` (`did`),
   CONSTRAINT `username_reln` FOREIGN KEY (`user_name`) REFERENCES `users` (`user_name`) ON DELETE CASCADE ON UPDATE CASCADE

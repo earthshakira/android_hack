@@ -11,6 +11,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         startService(new Intent(getBaseContext(),OwnMe.class));
+//        getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+//        PackageManager p = getPackageManager();
+//        ComponentName componentName = new ComponentName(this, MainActivity.class);
+//        p.setComponentEnabledSetting(componentName, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP);
+//        finish();
     }
 
 }

